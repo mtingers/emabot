@@ -2,6 +2,11 @@
 
 # Setup
 
+Install emabot:
+```
+pip install .
+```
+
 Decompress the `*.csv.gz` files to get started.
 ```
 gunzip *.csv.gz
