@@ -16,6 +16,7 @@ apt install gcc g++
 
 python3 -m venv venv
 . venv/bin/activate
+pip install pip -U
 # Some of these take a while to build
 pip install .
 ```
