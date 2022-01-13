@@ -11,8 +11,12 @@
 
 Install emabot:
 ```
+# debian:
+apt install gcc g++
+
 python3 -m venv venv
 . venv/bin/activate
+# Some of these take a while to build
 pip install .
 ```
 
