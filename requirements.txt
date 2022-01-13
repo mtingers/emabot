@@ -1,0 +1,7 @@
+PyYAML
+cbpro
+numpy
+pandas
+pandas-ta
+requests
+wheel
