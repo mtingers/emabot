@@ -27,7 +27,7 @@ mkdir log data
 Configure a bot:
 1. In Coinbase, create a new portofolio dedicated to this bot (it uses all
    available funds).
-2. Create new Coinbase API keys.
+2. Create new Coinbase API keys with view & trade permissions.
 3. Create a new emabot config labeled after that portfolio:
 ```
 cp -a etc/example.yml etc/PORTFOLIO-NAME.yml
