@@ -3,8 +3,9 @@
 # Requirements
 
 1. Linux VM (a cheap digitalocean $5/month VM will suffice)
-2. A Coinbase Pro account
-3. Funds in your Coinbase Pro account :)
+2. Python3.6+
+3. A Coinbase Pro account
+4. Funds in your Coinbase Pro account :)
 
 # Setup
 
