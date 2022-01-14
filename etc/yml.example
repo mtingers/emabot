@@ -9,3 +9,9 @@ general:
   passphrase: xxxxxxxxxxx
   b64secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   pair: ETH-USD
+  send_email: True
+
+email:
+  mail_host: mail.example.com
+  mail_from: foo@example.com
+  mail_to: example@example.com

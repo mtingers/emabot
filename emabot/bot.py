@@ -55,9 +55,10 @@ def pchange_f(x1, x2):
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
 class EmaBot:
-    def __init__(self, config_path, dryrun=False, force_sell=False):
+    def __init__(self, config_path, dryrun=False, force_sell=False, monitor=False):
         self.config_path = config_path
         self.dryrun = dryrun
+        self.monitor = monitor
         self.config = {}
         self.name = None
         self.pair = None
@@ -83,7 +84,7 @@ class EmaBot:
         missing = []
         if not 'general' in config:
             raise Exception('Missing config section "general"')
-        for i in ('debug', 'name', 'log_dir', 'data_dir', 'key', 'passphrase',
+        for i in ('debug', 'name', 'log_dir', 'data_dir', 'key', 'passphrase', 'send_email',
                 'b64secret', 'pair', 'hist_file'):
             if not i in config['general']:
                 missing.append(i)
@@ -99,15 +100,41 @@ class EmaBot:
         self.log_dir = re.sub(r'/$', '', self.config['general']['log_dir'])
         self.hist_file = self.config['general']['hist_file']
         self.buy_path = self.data_dir+'/'+self.name+'-buy.pickle'
+        self.send_email = self.config['general']['send_email']
+        self.mail_host = None
+        self.mail_to = None
+        self.mail_from = None
+        if self.send_email:
+            self.mail_host = self.config['email']['mail_host']
+            self.mail_to = self.config['email']['mail_to']
+            self.mail_from = self.config['email']['mail_from']
 
     def logit(self, msg):
         path = '{}/{}-{}.log'.format(self.log_dir, self.name, TODAY.split('-')[0])
         msg = '{} {}'.format(datetime.now(), msg.strip())
+        if self.dryrun:
+            msg = 'dryrun '+msg
         if not msg.startswith(self.pair):
             msg = '{} {}'.format(self.pair, msg)
         print(msg)
         with open(path, 'a') as fd:
             fd.write('{}\n'.format(msg))
+
+    def send_email(self, subject: str, msg: str) -> None:
+        """TODO: Add auth, currently setup to relay locally or relay-by-IP"""
+        for email in self.mail_to:
+            if not email.strip():
+                continue
+            headers = "From: %s\r\nTo: %s\r\nSubject: %s %s\r\n\r\n" % (
+                self.mail_from, email, self.pair, subject)
+            if not msg:
+                msg2 = subject
+            else:
+                msg2 = msg
+            msg2 = headers + msg2
+            server = smtplib.SMTP(self.mail_host)
+            server.sendmail(self.mail_from, email, msg2)
+            server.quit()
 
     def load_hist(self, emaA=1, emaB=2):
         """ Note emaA=1 and emaB=2 backtested the best (by a lot) """
@@ -196,9 +223,11 @@ class EmaBot:
         return response
 
     def run(self):
+        self.cb_auth()
+        if self.monitor:
+            return self._monitor()
         self.logit('run: ' + TODAY)
         self.load_hist()
-        self.cb_auth()
         wallet = self.get_usd_wallet()
         fees = self.get_fees()
         price = self.get_price()
@@ -216,23 +245,23 @@ class EmaBot:
         if self.dryrun:
             print('Exiting before buy/sell logic because dryrun=True')
             print('Dump settings:')
-            print(self.name)
-            print(self.pair)
-            print(self.data_dir)
-            print(self.log_dir)
-            print(self.hist_file)
-            print(self.buy_path)
-            if buy:
+            print('    ', self.name)
+            print('    ', self.pair)
+            print('    ', self.data_dir)
+            print('    ', self.log_dir)
+            print('    ', self.hist_file)
+            print('    ', self.buy_path)
+
+        # BUY logic
+        if not buy and self.emaA > self.emaB:
+            self.logit('BUY: {}'.format(price))
+            if self.dryrun:
                 u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
                 u_after = float(price) * float(buy['settled']['filled_size'])
                 print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
                     buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
                 ))
-            sys.exit(0)
-
-        # BUY logic
-        if not buy and self.emaA > self.emaB:
-            self.logit('BUY: {}'.format(price))
+                sys.exit(0)
             response = self.buy_market(wallet)
             self.logit('RESPONSE: {}'.format(response))
             with open(self.buy_path+'.tmp', 'wb') as fd:
@@ -258,11 +287,19 @@ class EmaBot:
                     with open(self.buy_path+'.tmp', 'wb') as fd:
                         pickle.dump(info, fd)
                     os.rename(self.buy_path+'.tmp', self.buy_path)
+                    self.send_email('BOUGHT: {}'.format(price), '')
                     break
         # SELL logic
         elif buy and self.emaB > self.emaA:
             size = buy['settled']['filled_size']
             self.logit('SELL: {} size:{}'.format(price, size))
+            if self.dryrun:
+                u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
+                u_after = float(price) * float(buy['settled']['filled_size'])
+                print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
+                    buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
+                ))
+                sys.exit(0)
             response = self.sell_market(size)
             self.logit('RESPONSE: {}'.format(response))
             while 1:
@@ -277,7 +314,46 @@ class EmaBot:
                     self.logit('PROFIT: {} -> {} {:.2f} ({:.2f}%)'.format(
                         buy['real_price'], price, profit, pchange(buy['real_price'], price)
                     ))
+                    self.send_email('SOLD: profit={:,.2f}'.format(profit), '')
                     break
+        else:
+            self.logit('NOOP')
+
+    def _monitor(self):
+        """Track the status of a buy and log the history of percentage change. Alert on slippage
+        from high percent change.
+        """
+        # Skip running if no buys in place
+        if not os.path.exists(self.buy_path+'.prev'):
+            return
+        monitor_path = self.buy_path+'.monitor'
+        monitor_history = []
+        if os.path.exists(monitor_path):
+            with open(monitor_path, 'rb') as fd:
+                monitor_history = pickle.load(fd)
+        price = self.get_price()
+        with open(self.buy_path+'.prev', 'rb') as fd:
+            buy = pickle.load(fd)
+        pc = pchange(buy['real_price'], price)
+        duration_hours = (time.time() - buy['buy_epoch'])/ 60.0 / 60.0
+        """
+        print('MONITOR: duration:{:.2f}h percent_change:{:,.2f}%  previous:'.format(
+            duration_hours, pc))
+        for m in monitor_history[::-1]:
+            print('    {:.2f}%'.format(m))
+        """
+        with open(monitor_path, 'wb') as fd:
+            pickle.dump(monitor_history, fd)
+        if len(monitor_history) > 1:
+            mmax = max(monitor_history)
+            mmin = min(monitor_history)
+            diff = mmax - pc
+            if diff > 0.99:
+                print(mmax, pc, 'diff:', diff)
+                self.logit('MONITOR-WARNING: diff={:.2f}'.format(diff))
+                send_email('MONITOR-WARNING: diff={:.2f}'.format(diff), '')
+        monitor_history.append(pc)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -285,8 +361,13 @@ def main():
     parser.add_argument('--force-sell', help='Force sell of holdings tracked in the buy cache',
             dest='force_sell', action='store_true')
     parser.add_argument('--config', help='Config file path', dest='config_path', required=True)
+    parser.add_argument('--monitor', help='Monitor buy state/percent change', action='store_true')
     args = parser.parse_args()
-    ema_bot = EmaBot(args.config_path, dryrun=args.dryrun, force_sell=args.force_sell)
+    ema_bot = EmaBot(
+        args.config_path,
+        dryrun=args.dryrun,
+        monitor=args.monitor,
+        force_sell=args.force_sell)
     ema_bot.run()
 
 if __name__ == '__main__':
