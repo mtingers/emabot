@@ -38,7 +38,7 @@ Configure a bot:
    new portfolio).
 3. Create a new emabot config labeled after that portfolio:
 ```
-cp -a etc/example.yml etc/PORTFOLIO-NAME.yml
+cp -a etc/yml.example etc/PORTFOLIO-NAME.yml
 chmod 600 etc/PORTFOLOIO-NAME.yml
 # Edit config and update parameters accordingly
 vi etc/PORTFOLIO-NAME.yml
