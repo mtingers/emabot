@@ -47,4 +47,5 @@ vi etc/PORTFOLIO-NAME.yml
 Setup a cronjob at 00:00:00 UTC (set system tz to UTC first). Example:
 ```
 00 00 * * * (cd /opt/emabot && bash run.sh)
+10,40 * * * * (cd /opt/emabot && ./monitor.sh)
 ```
