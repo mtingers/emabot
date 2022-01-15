@@ -10,6 +10,7 @@ general:
   b64secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   pair: ETH-USD
   send_email: True
+  monitor_alert_change: -1.0
 
 email:
   mail_host: mail.example.com

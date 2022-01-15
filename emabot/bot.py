@@ -15,6 +15,7 @@ import pandas_ta as ta
 from datetime import datetime
 from collections import deque
 from decimal import Decimal
+import smtplib
 import requests
 import yaml
 import cbpro
@@ -55,8 +56,9 @@ def pchange_f(x1, x2):
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
 class EmaBot:
-    def __init__(self, config_path, dryrun=False, force_sell=False, monitor=False):
+    def __init__(self, config_path, dryrun=False, force_sell=False, monitor=False, debug=False):
         self.config_path = config_path
+        self.debug = debug
         self.dryrun = dryrun
         self.monitor = monitor
         self.config = {}
@@ -85,7 +87,7 @@ class EmaBot:
         if not 'general' in config:
             raise Exception('Missing config section "general"')
         for i in ('debug', 'name', 'log_dir', 'data_dir', 'key', 'passphrase', 'send_email',
-                'b64secret', 'pair', 'hist_file'):
+                'b64secret', 'pair', 'hist_file', 'monitor_alert_change'):
             if not i in config['general']:
                 missing.append(i)
         if missing:
@@ -100,13 +102,14 @@ class EmaBot:
         self.log_dir = re.sub(r'/$', '', self.config['general']['log_dir'])
         self.hist_file = self.config['general']['hist_file']
         self.buy_path = self.data_dir+'/'+self.name+'-buy.pickle'
-        self.send_email = self.config['general']['send_email']
+        self.monitor_alert_change = self.config['general']['monitor_alert_change']
+        self.email_enabled = self.config['general']['send_email']
         self.mail_host = None
         self.mail_to = None
         self.mail_from = None
-        if self.send_email:
+        if self.email_enabled:
             self.mail_host = self.config['email']['mail_host']
-            self.mail_to = self.config['email']['mail_to']
+            self.mail_to = self.config['email']['mail_to'].split(',')
             self.mail_from = self.config['email']['mail_from']
 
     def logit(self, msg):
@@ -256,11 +259,6 @@ class EmaBot:
         if not buy and self.emaA > self.emaB:
             self.logit('BUY: {}'.format(price))
             if self.dryrun:
-                u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
-                u_after = float(price) * float(buy['settled']['filled_size'])
-                print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
-                    buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
-                ))
                 sys.exit(0)
             response = self.buy_market(wallet)
             self.logit('RESPONSE: {}'.format(response))
@@ -287,7 +285,8 @@ class EmaBot:
                     with open(self.buy_path+'.tmp', 'wb') as fd:
                         pickle.dump(info, fd)
                     os.rename(self.buy_path+'.tmp', self.buy_path)
-                    self.send_email('BOUGHT: {}'.format(price), '')
+                    if self.email_enabled:
+                        self.send_email('BOUGHT: {}'.format(price), '')
                     break
         # SELL logic
         elif buy and self.emaB > self.emaA:
@@ -314,7 +313,8 @@ class EmaBot:
                     self.logit('PROFIT: {} -> {} {:.2f} ({:.2f}%)'.format(
                         buy['real_price'], price, profit, pchange(buy['real_price'], price)
                     ))
-                    self.send_email('SOLD: profit={:,.2f}'.format(profit), '')
+                    if self.email_enabled:
+                        self.send_email('SOLD: profit={:,.2f}'.format(profit), '')
                     break
         else:
             self.logit('NOOP')
@@ -324,7 +324,7 @@ class EmaBot:
         from high percent change.
         """
         # Skip running if no buys in place
-        if not os.path.exists(self.buy_path+'.prev'):
+        if not os.path.exists(self.buy_path):
             return
         monitor_path = self.buy_path+'.monitor'
         monitor_history = []
@@ -332,32 +332,32 @@ class EmaBot:
             with open(monitor_path, 'rb') as fd:
                 monitor_history = pickle.load(fd)
         price = self.get_price()
-        with open(self.buy_path+'.prev', 'rb') as fd:
+        with open(self.buy_path, 'rb') as fd:
             buy = pickle.load(fd)
         pc = pchange(buy['real_price'], price)
         duration_hours = (time.time() - buy['buy_epoch'])/ 60.0 / 60.0
-        """
-        print('MONITOR: duration:{:.2f}h percent_change:{:,.2f}%  previous:'.format(
-            duration_hours, pc))
-        for m in monitor_history[::-1]:
-            print('    {:.2f}%'.format(m))
-        """
-        with open(monitor_path, 'wb') as fd:
-            pickle.dump(monitor_history, fd)
+        if self.debug:
+            print('MONITOR: duration:{:.2f}h percent_change:{:,.2f}%  previous:'.format(
+                duration_hours, pc))
+            for m in monitor_history[::-1]:
+                print('    {:.2f}%'.format(m))
         if len(monitor_history) > 1:
             mmax = max(monitor_history)
             mmin = min(monitor_history)
-            diff = mmax - pc
-            if diff > 0.99:
-                print(mmax, pc, 'diff:', diff)
-                self.logit('MONITOR-WARNING: diff={:.2f}'.format(diff))
-                send_email('MONITOR-WARNING: diff={:.2f}'.format(diff), '')
+            diff = pc - mmax
+            if diff <= self.monitor_alert_change:
+                if self.email_enabled:
+                    self.send_email('MONITOR-WARNING: diff={:.2f}'.format(diff), '')
+            if self.debug:
+                self.logit('MONITOR: diff={:.2f}'.format(diff))
         monitor_history.append(pc)
-
+        with open(monitor_path, 'wb') as fd:
+            pickle.dump(monitor_history, fd)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dryrun', help='Dryrun mode', action='store_true')
+    parser.add_argument('--debug', help='Debug output', action='store_true')
     parser.add_argument('--force-sell', help='Force sell of holdings tracked in the buy cache',
             dest='force_sell', action='store_true')
     parser.add_argument('--config', help='Config file path', dest='config_path', required=True)
@@ -366,6 +366,7 @@ def main():
     ema_bot = EmaBot(
         args.config_path,
         dryrun=args.dryrun,
+        debug=args.debug,
         monitor=args.monitor,
         force_sell=args.force_sell)
     ema_bot.run()
