@@ -44,8 +44,8 @@ chmod 600 etc/PORTFOLOIO-NAME.yml
 vi etc/PORTFOLIO-NAME.yml
 ```
 
-Setup a cronjob at 00:00:00 UTC (set system tz to UTC first). Example:
+Setup a cronjob at every hour (set system tz to UTC first). Example:
 ```
-00 00 * * * (cd /opt/emabot && bash run.sh)
-10,40 * * * * (cd /opt/emabot && bash monitor.sh)
+00 * * * * (cd /opt/emabot && bash run.sh)
+30 * * * * (cd /opt/emabot && bash monitor.sh)
 ```

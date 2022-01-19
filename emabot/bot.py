@@ -153,7 +153,7 @@ class EmaBot:
         df['open'] = df['close']['open']
         df['high'] = df['close']['high']
         df['low'] = df['close']['low']
-        df['close2'] = df['close']['low']
+        df['close2'] = df['close']['close']
         df = df.drop(columns=['close'])
         df['close'] = df['close2']
         df = df.drop(columns=['close2'])
@@ -318,6 +318,12 @@ class EmaBot:
                     break
         else:
             self.logit('NOOP')
+            if buy and self.dryrun:
+                u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
+                u_after = float(price) * float(buy['settled']['filled_size'])
+                print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
+                    buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
+                ))
 
     def _monitor(self):
         """Track the status of a buy and log the history of percentage change. Alert on slippage

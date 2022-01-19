@@ -22,6 +22,44 @@ FEE = 0.6/100
 def pdiff(old, new):
     return ((float(new) - float(old)) / float(old)) * float('100.0')
 
+def backtest2(do_print=True, emaA=12, emaB=26):
+    # 2) Process history csv file
+    df = pd.read_csv(sys.argv[1])
+    df.timestamp = pd.to_datetime(df.timestamp, unit='s')
+    df = df.set_index("timestamp")
+    df = df.drop(columns=['open','high','low','volume'])
+    df = df.resample('1h').ohlc()
+    df['open'] = df['close']['open']
+    df['high'] = df['close']['high']
+    df['low'] = df['close']['low']
+    df['close2'] = df['close']['close']
+    #df['close2'] = df['close']['low']
+    df = df.drop(columns=['close'])
+    df['close'] = df['close2']
+    df = df.drop(columns=['close2'])
+    idf = df.resample('1D').ohlc()
+    df['emaA'] = ta.ema(idf['close']['']['close'], length=emaA)
+    df['emaB'] = ta.ema(idf['close']['']['close'], length=emaB)
+    df.fillna(method='ffill', inplace=True)
+    df.dropna(axis='rows', how='any', inplace=True)
+    df = df.drop(columns=['open', 'high', 'low'])
+    print(df)
+
+    # 3) Get last row and assign close price, emaA, emaB
+    last_row = df.iloc[-1]
+    #print(last_row)
+    close = last_row['close'].item()
+    emaA = last_row['emaA'].item()
+    emaB = last_row['emaB'].item()
+    print('last_row:')
+    print(last_row)
+    if emaA > emaB:
+        print('BUYABLE')
+    elif emaB > emaA:
+        print('SELLABLE')
+    else:
+        print('NOOPABLE')
+
 def backtest1(do_print=True, emaA=12, emaB=26):
     df = pd.read_csv(sys.argv[1])
     # filter by date range here:
@@ -37,7 +75,8 @@ def backtest1(do_print=True, emaA=12, emaB=26):
     df['open'] = df['close']['open']
     df['high'] = df['close']['high']
     df['low'] = df['close']['low']
-    df['close2'] = df['close']['low']
+    df['close2'] = df['close']['close']
+    #df['close2'] = df['close']['low']
     df = df.drop(columns=['close'])
     df['close'] = df['close2']
     df = df.drop(columns=['close2'])
@@ -112,6 +151,7 @@ def backtest1(do_print=True, emaA=12, emaB=26):
 if __name__ == '__main__':
     combinations = []
     # emaA=1,emaB=2 tested the best from the bruteforce below
+    #result = backtest1(emaA=1, emaB=2, do_print=True)
     result = backtest1(emaA=1, emaB=2, do_print=True)
     print('{:,.2f}'.format(result))
     sys.exit(0)
