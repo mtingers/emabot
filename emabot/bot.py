@@ -55,6 +55,48 @@ def pchange_f(x1, x2):
     x2 = float(x2)
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
+def backtest_decider(emaA=12, emaB=26, csv_path=None):
+    df = pd.read_csv(csv_path)
+    # filter by date range here:
+    # 2018-01-01 00:00:00
+    #df = df[~(df['timestamp'] < 1514764800)]
+    # 2020-01-01 01:00:00
+    #df = df[~(df['timestamp'] < 1577883600)]
+    df.timestamp = pd.to_datetime(df.timestamp, unit='s')
+    df = df.set_index("timestamp")
+    df = df.drop(columns=['open','high','low','volume'])
+    df = df.resample('1h').ohlc()
+    # flatten
+    df['open'] = df['close']['open']
+    df['high'] = df['close']['high']
+    df['low'] = df['close']['low']
+    df['close2'] = df['close']['close']
+    #df['close2'] = df['close']['low']
+    df = df.drop(columns=['close'])
+    df['close'] = df['close2']
+    df = df.drop(columns=['close2'])
+    idf = df.resample('1D').ohlc()
+    df['emaA'] = ta.ema(idf['close']['']['close'], length=emaA)
+    df['emaB'] = ta.ema(idf['close']['']['close'], length=emaB)
+    df.fillna(method='ffill', inplace=True)
+    df.dropna(axis='rows', how='any', inplace=True)
+    # end flatten
+    wallet = 1000.00
+    bought = None
+    last_decision = 'noop'
+    for (dt, r) in df.iterrows():
+        close = r['close'].item()
+        emaA = r['emaA'].item()
+        emaB = r['emaB'].item()
+        last_decision = 'noop'
+        if not bought and emaA > emaB:
+            last_decision = 'buy'
+            bought = close
+        elif bought and emaB > emaA:
+            last_decision = 'sell'
+            bought = None
+    return last_decision
+
 class EmaBot:
     def __init__(self, config_path, dryrun=False, force_sell=False, monitor=False, debug=False):
         self.config_path = config_path
@@ -230,7 +272,7 @@ class EmaBot:
         if self.monitor:
             return self._monitor()
         self.logit('run: ' + TODAY)
-        self.load_hist()
+        generate_historical_csv(self.hist_file, pair=self.pair, days_ago=522)
         wallet = self.get_usd_wallet()
         fees = self.get_fees()
         price = self.get_price()
@@ -254,9 +296,9 @@ class EmaBot:
             print('    ', self.log_dir)
             print('    ', self.hist_file)
             print('    ', self.buy_path)
-
-        # BUY logic
-        if not buy and self.emaA > self.emaB:
+        decision = backtest_decider(emaA=1, emaB=2, csv_path=self.hist_file)
+        self.logit('DECISION: {}'.format(decision))
+        if not buy and decision == 'buy':
             self.logit('BUY: {}'.format(price))
             if self.dryrun:
                 sys.exit(0)
@@ -289,7 +331,7 @@ class EmaBot:
                         self.send_email('BOUGHT: {}'.format(price), '')
                     break
         # SELL logic
-        elif buy and self.emaB > self.emaA:
+        elif buy and decision == 'sell':
             size = buy['settled']['filled_size']
             self.logit('SELL: {} size:{}'.format(price, size))
             if self.dryrun:
@@ -315,6 +357,8 @@ class EmaBot:
                     ))
                     if self.email_enabled:
                         self.send_email('SOLD: profit={:,.2f}'.format(profit), '')
+                        monitor_path = self.buy_path+'.monitor'
+                        os.rename(monitor_path, monitor_path+'.prev')
                     break
         else:
             self.logit('NOOP')
