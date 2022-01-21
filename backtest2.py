@@ -20,67 +20,19 @@ warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 FEE = 0.6/100
 
 def pdiff(old, new):
-    try:
-        return ((float(new) - float(old)) / float(old)) * float('100.0')
-    except:
-        print('OLD:', old)
-        print('NEW:', new)
-        old_first = old
-        new_first = new
-        #if type(old) != float:
-        #    old_first = old['close'].iloc(0)
-        new_first = new[0]['close']
-        return pdiff(old_first, new_first)
+    return ((float(new) - float(old)) / float(old)) * float('100.0')
 
-def backtest2(do_print=True, emaA=12, emaB=26):
-    # 2) Process history csv file
-    df = pd.read_csv(sys.argv[1])
-    df.timestamp = pd.to_datetime(df.timestamp, unit='s')
-    df = df.set_index("timestamp")
-    df = df.drop(columns=['open','high','low','volume'])
-    df = df.resample('1h').ohlc()
-    df['open'] = df['close']['open']
-    df['high'] = df['close']['high']
-    df['low'] = df['close']['low']
-    df['close2'] = df['close']['close']
-    #df['close2'] = df['close']['low']
-    df = df.drop(columns=['close'])
-    df['close'] = df['close2']
-    df = df.drop(columns=['close2'])
-    idf = df.resample('1D').ohlc()
-    df['emaA'] = ta.ema(idf['close']['']['close'], length=emaA)
-    df['emaB'] = ta.ema(idf['close']['']['close'], length=emaB)
-    df.fillna(method='ffill', inplace=True)
-    df.dropna(axis='rows', how='any', inplace=True)
-    df = df.drop(columns=['open', 'high', 'low'])
-    print(df)
-
-    # 3) Get last row and assign close price, emaA, emaB
-    last_row = df.iloc[-1]
-    #print(last_row)
-    close = last_row['close'].item()
-    emaA = last_row['emaA'].item()
-    emaB = last_row['emaB'].item()
-    print('last_row:')
-    print(last_row)
-    if emaA > emaB:
-        print('BUYABLE')
-    elif emaB > emaA:
-        print('SELLABLE')
-    else:
-        print('NOOPABLE')
+def closest(lst, k):
+    return lst[min(range(len(lst)), key = lambda i: abs(lst[i]-k))]
 
 def backtest1(do_print=True, emaA=12, emaB=26):
     df = pd.read_csv(sys.argv[1])
-    df_test = pd.read_csv(sys.argv[1])
     # filter by date range here:
     # 2018-01-01 00:00:00
     #df = df[~(df['timestamp'] < 1514764800)]
     # 2020-01-01 01:00:00
     #df = df[~(df['timestamp'] < 1577883600)]
-    df_test.timestamp = pd.to_datetime(df_test.timestamp, unit='s')
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
-    df_test = df_test.set_index("timestamp")
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
     df = df.resample('1h').ohlc()
@@ -110,47 +62,31 @@ def backtest1(do_print=True, emaA=12, emaB=26):
     fee = None
     ema_x_buy = 0
     ema_x_sell = 0
+    marks = []
     for (dt, r) in df.iterrows():
         close = r['close'].item()
         emaA = r['emaA'].item()
         emaB = r['emaB'].item()
-        try:
-            test = df_test.loc[str(dt)]
-        except:
-            cur_dt = str(dt)
-            end_dt = cur_dt.replace('00:00', '09:00')
-            test = df_test.loc[cur_dt :end_dt]
-        cur_price = test['close']
+        print('TEST:', str(dt), emaA, emaB)
         if not bought and emaA > emaB:
-            #bought = close
-            bought = cur_price
+            bought = close
             size = wallet / bought
             fee = wallet * FEE
+            marks.append(str(dt))
             if do_print:
                 print('{} BUY:, {:,.2f} wallet={:,.2f} size={:,.4f} emaA={:.2f} emaB={:.2f}'.format(
                     dt, bought, wallet, size, emaA, emaB))
         elif bought and emaB > emaA:
-            #sell = close
-            sell = cur_price
-            try:
-                px = pdiff(bought, sell)
-            except:
-                print('---------------------------------------- fixup -------------')
-                sell = close
-                px = pdiff(bought, close)
-                
-            #profit = ((sell * size) - wallet)
-            #wallet = (wallet + profit) - fee
+            sell = close
+            px = pdiff(bought, sell)
             profit = wallet * ((px/100.)-FEE)
             wallet = wallet + profit
-            #fee = wallet * FEE
+            marks.append(str(dt))
             if profit > 0:
                 wins += 1
             else:
                 losses += 1
             if do_print:
-                print(
-                        "TEST", dt, 'SELL:', sell, wallet, bought, profit, fee, px, emaA, emaB)
                 print('{} SELL:, {:,.2f} wallet={:,.2f} bought={:,.2f} profit={:,.2f} fee={:,.2f} p={:,.2f} emaA={:.2f} emaB={:.2f}'.format(
                     dt, sell, wallet, bought, profit, fee, px, emaA, emaB))
             bought = None
@@ -176,6 +112,77 @@ def backtest1(do_print=True, emaA=12, emaB=26):
     print('mean-month-p: {:,.2f}%'.format(np.mean(pvals_month)))
     print('median-month-p: {:,.2f}%'.format(np.median(pvals_month)))
     print('wins:', wins, 'losses:', losses)
+    """
+    "timestamp","low","high","open","close","volume"
+    "1476228720","644.04","644.13","644.04","644.11","5.27063802"
+    """
+    losses = 0
+    wins = 0
+    # end flatten
+    profits = {}
+    profits_p = {}
+    wallet = 1000.00
+    bought = None
+    fee = None
+    ema_x_buy = 0
+    ema_x_sell = 0
+    data = open(sys.argv[1]).read().strip().split('\n')[1:]
+    tmap = {}
+    tmap_keys = []
+    for d in data:
+        d = d.replace('"', '')
+        timestamp, low, high, oopen, close, volume = [float(i) for i in d.split(',')]
+        timestamp = int(timestamp)
+        tmap_keys.append(timestamp)
+        tmap[timestamp] = close
+    for i in range(0, len(marks)-1, 2):
+        buy = marks[i]
+        sell = marks[i+1]
+        ts = int(time.mktime(time.strptime(sell, "%Y-%m-%d %H:%M:%S")))
+        tb = int(time.mktime(time.strptime(buy, "%Y-%m-%d %H:%M:%S")))
+        if ts in tmap_keys:
+            sell_price = tmap[ts]
+        else:
+            print('WARN: ts not in tmap')
+            sell_price = tmap[closest(tmap_keys, ts)]
+        if tb in tmap_keys:
+            buy_price = tmap[tb]
+        else:
+            print('WARN: tb not in tmap')
+            buy_price = tmap[closest(tmap_keys, tb)]
+            
+        fee = wallet * FEE
+        bought = buy_price
+        sell = sell_price
+        px = pdiff(bought, sell)
+        profit = wallet * ((px/100.)-FEE)
+        wallet = wallet + profit
+        marks.append(str(dt))
+        if profit > 0:
+            wins += 1
+        else:
+            losses += 1
+        if do_print:
+            print('{} SELL:, {:,.2f} wallet={:,.2f} bought={:,.2f} profit={:,.2f} fee={:,.2f} p={:,.2f}'.format(
+                marks[i+1], sell, wallet, bought, profit, fee, px))
+        bought = None
+        pdate = marks[i+1].rsplit('-', 1)[0]
+        if not pdate in profits:
+            profits[pdate] = profit
+            profits_p[pdate] = [px]
+        else:
+            profits[pdate] += profit
+            profits_p[pdate].append(px)
+    if do_print:
+        for k, v in profits.items():
+            print('{} {:,.2f} {:,.2f}%'.format(k, v, sum(profits_p[k])))
+    pvals = []
+    pvals_month = []
+    for i in profits_p.values():
+        for j in i:
+            pvals.append(j)
+    for k, v in profits_p.items():
+        pvals_month.append(sum(v))
     return wallet
 
 if __name__ == '__main__':
