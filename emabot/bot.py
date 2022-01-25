@@ -27,41 +27,42 @@ TODAY = str(datetime.now()).split(' ')[0]
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-def _api_response_check(response, exception_to_raise):
+def _api_response_check(response: dict, exception_to_raise: Exception) -> None:
+    """Check the coinbase API response for 'message' (an error)"""
     if 'message' in response:
         raise exception_to_raise(response['message'])
 
-def truncate(x, n):
+def truncate(x, n: int) -> str:
+    """Truncate to N decimals, return as string"""
     if not '.' in str(x):
         return str(x) + '.0'
     a, b = str(x).split('.')
     b = b[:n]
     return a+'.'+b
 
-def truncate_f(x, n):
+def truncate_f(x, n: int) -> float:
+    """Truncate to N decimals, return as float"""
     if not '.' in str(x):
         return str(x) + '.0'
     a, b = str(x).split('.')
     b = b[:n]
     return float(a+'.'+b)
 
-def pchange(x1, x2):
+def pchange(x1, x2) -> float:
+    """Percent change"""
     x1 = float(x1)
     x2 = float(x2)
     return round(((x2 - x1) / x1) * 100., 1)
 
-def pchange_f(x1, x2):
+def pchange_f(x1, x2) -> float:
+    """Percent change as truncated float"""
     x1 = float(x1)
     x2 = float(x2)
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
-def backtest_decider(emaA=12, emaB=26, csv_path=None):
+def backtest_decider(emaA=12, emaB=26, csv_path=None) -> str:
+    """Main buy/sell logic"""
     df = pd.read_csv(csv_path)
-    # filter by date range here:
-    # 2018-01-01 00:00:00
-    #df = df[~(df['timestamp'] < 1514764800)]
-    # 2020-01-01 01:00:00
-    #df = df[~(df['timestamp'] < 1577883600)]
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
@@ -81,7 +82,6 @@ def backtest_decider(emaA=12, emaB=26, csv_path=None):
     df.fillna(method='ffill', inplace=True)
     df.dropna(axis='rows', how='any', inplace=True)
     # end flatten
-    wallet = 1000.00
     bought = None
     last_decision = 'noop'
     for (dt, r) in df.iterrows():
@@ -98,6 +98,7 @@ def backtest_decider(emaA=12, emaB=26, csv_path=None):
     return last_decision
 
 class EmaBot:
+    """Main code for running the bot"""
     def __init__(self, config_path, dryrun=False, force_sell=False, monitor=False, debug=False):
         self.config_path = config_path
         self.debug = debug
@@ -115,10 +116,9 @@ class EmaBot:
         self.buy_path = None
         self.configure()
         self.close = None
-        self.emaA = None
-        self.emaB = None
 
-    def configure(self):
+    def configure(self) -> None:
+        """Configure from yaml file"""
         with open(self.config_path) as config_stream:
             tmp = list(yaml.safe_load_all(config_stream))
         config = {}
@@ -154,7 +154,9 @@ class EmaBot:
             self.mail_to = self.config['email']['mail_to'].split(',')
             self.mail_from = self.config['email']['mail_from']
 
-    def logit(self, msg):
+    def logit(self, msg) -> None:
+        """Logger with some customizations.
+        TODO: Maybe convert to logging module"""
         path = '{}/{}-{}.log'.format(self.log_dir, self.name, TODAY.split('-')[0])
         msg = '{} {}'.format(datetime.now(), msg.strip())
         if self.dryrun:
@@ -166,7 +168,8 @@ class EmaBot:
             fd.write('{}\n'.format(msg))
 
     def send_email(self, subject: str, msg: str) -> None:
-        """TODO: Add auth, currently setup to relay locally or relay-by-IP"""
+        """Send an email
+        TODO: Add auth, currently setup to relay locally or relay-by-IP"""
         for email in self.mail_to:
             if not email.strip():
                 continue
@@ -181,43 +184,13 @@ class EmaBot:
             server.sendmail(self.mail_from, email, msg2)
             server.quit()
 
-    def load_hist(self, emaA=1, emaB=2):
-        """ Note emaA=1 and emaB=2 backtested the best (by a lot) """
-        # 1) Get historical to current OHLC
-        generate_historical_csv(self.hist_file, pair=self.pair, days_ago=522)
 
-        # 2) Process history csv file
-        df = pd.read_csv(self.hist_file)
-        df.timestamp = pd.to_datetime(df.timestamp, unit='s')
-        df = df.set_index("timestamp")
-        df = df.drop(columns=['open','high','low','volume'])
-        df = df.resample('1h').ohlc()
-        df['open'] = df['close']['open']
-        df['high'] = df['close']['high']
-        df['low'] = df['close']['low']
-        df['close2'] = df['close']['close']
-        df = df.drop(columns=['close'])
-        df['close'] = df['close2']
-        df = df.drop(columns=['close2'])
-        idf = df.resample('1D').ohlc()
-        df['emaA'] = ta.ema(idf['close']['']['close'], length=emaA)
-        df['emaB'] = ta.ema(idf['close']['']['close'], length=emaB)
-        df.fillna(method='ffill', inplace=True)
-        df.dropna(axis='rows', how='any', inplace=True)
-
-        # 3) Get last row and assign close price, emaA, emaB
-        last_row = df.iloc[-1]
-        #print(last_row)
-        self.close = last_row['close'].item()
-        self.emaA = last_row['emaA'].item()
-        self.emaB = last_row['emaB'].item()
-
-
-    def cb_auth(self):
+    def cb_auth(self) -> None:
+        """Authenticate to coinbase api"""
         self.auth_client = cbpro.AuthenticatedClient(
             self.key, self.b64secret, self.passphrase)
 
-    def get_usd_wallet(self):
+    def get_usd_wallet(self) -> Decimal:
         accounts = self.auth_client.get_accounts()
         _api_response_check(accounts, Exception)
         for account in accounts:
@@ -227,7 +200,8 @@ class EmaBot:
         assert wallet is not None, 'USD wallet was not found.'
         return wallet
 
-    def get_fees(self):
+    def get_fees(self) -> tuple:
+        """Get the current account fees for maker/taker"""
         fees = self.auth_client._send_message('get', '/fees')
         _api_response_check(fees, Exception)
         maker_fee = Decimal(fees['maker_fee_rate'])
@@ -235,18 +209,20 @@ class EmaBot:
         usd_volume = Decimal(fees['usd_volume'])
         return (maker_fee, taker_fee, usd_volume)
 
-    def get_price(self):
+    def get_price(self) -> Decimal:
+        """Get current pair price"""
         ticker = self.auth_client.get_product_ticker(product_id=self.pair)
         _api_response_check(ticker, Exception)
         price = Decimal(ticker['price'])
         return price
 
-    def get_order(self, order_id):
+    def get_order(self, order_id: str) -> dict:
+        """Get an order by id"""
         order = self.auth_client.get_order(order_id)
         _api_response_check(order, Exception)
         return order
 
-    def buy_market(self, funds):
+    def buy_market(self, funds: float) -> dict:
         funds = truncate(funds, 2) #str(round(Decimal(funds), 2))
         response = self.auth_client.place_market_order(
             product_id=self.pair,
@@ -256,7 +232,7 @@ class EmaBot:
         _api_response_check(response, Exception)
         return response
 
-    def sell_market(self, size):
+    def sell_market(self, size: float) -> dict:
         # TODO: Get precisions from api for the self.pair
         fixed_size = truncate(size, 8) #str(round(Decimal(size), 8))
         response = self.auth_client.place_market_order(
@@ -267,7 +243,7 @@ class EmaBot:
         _api_response_check(response, Exception)
         return response
 
-    def run(self):
+    def run(self) -> None:
         self.cb_auth()
         if self.monitor:
             return self._monitor()
@@ -296,9 +272,14 @@ class EmaBot:
             print('    ', self.log_dir)
             print('    ', self.hist_file)
             print('    ', self.buy_path)
+
+        ###################################################################
+        # buy/sell phase is here
+        ###################################################################
         decision = backtest_decider(emaA=1, emaB=2, csv_path=self.hist_file)
         self.logit('DECISION: {}'.format(decision))
         if not buy and decision == 'buy':
+            # TODO: maybe break this out
             self.logit('BUY: {}'.format(price))
             if self.dryrun:
                 sys.exit(0)
@@ -307,8 +288,6 @@ class EmaBot:
             with open(self.buy_path+'.tmp', 'wb') as fd:
                 info = {
                     'wallet':wallet,
-                    'emaA': self.emaA,
-                    'emaB':self.emaB,
                     'date':TODAY,
                     'real_price':price,
                     'response':response,
@@ -332,6 +311,7 @@ class EmaBot:
                     break
         # SELL logic
         elif buy and decision == 'sell':
+            # TODO: maybe break this out
             size = buy['settled']['filled_size']
             self.logit('SELL: {} size:{}'.format(price, size))
             if self.dryrun:
@@ -369,7 +349,7 @@ class EmaBot:
                     buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
                 ))
 
-    def _monitor(self):
+    def _monitor(self) -> None:
         """Track the status of a buy and log the history of percentage change. Alert on slippage
         from high percent change.
         """
@@ -404,7 +384,7 @@ class EmaBot:
         with open(monitor_path, 'wb') as fd:
             pickle.dump(monitor_history, fd)
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--dryrun', help='Dryrun mode', action='store_true')
     parser.add_argument('--debug', help='Debug output', action='store_true')
