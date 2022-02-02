@@ -82,20 +82,35 @@ def backtest_decider(emaA=12, emaB=26, csv_path=None) -> str:
     df.fillna(method='ffill', inplace=True)
     df.dropna(axis='rows', how='any', inplace=True)
     # end flatten
-    bought = None
+
+    # Make decision based off of emaA and emaB comparison
+    # Use tail end of dataframe
     last_decision = 'noop'
+    close = df['close'].tail(1).item()
+    emaA = df['emaA'].tail(1).item()
+    emaB = df['emaB'].tail(1).item()
+    if emaA > emaB:
+        last_decision = 'buy'
+    elif emaB > emaA:
+        last_decision = 'sell'
+    return last_decision
+    """
+    # Turned this into a df.tail() call
+    bought = None
     for (dt, r) in df.iterrows():
         close = r['close'].item()
         emaA = r['emaA'].item()
         emaB = r['emaB'].item()
         last_decision = 'noop'
         if not bought and emaA > emaB:
-            last_decision = 'buy'
             bought = close
         elif bought and emaB > emaA:
-            last_decision = 'sell'
             bought = None
-    return last_decision
+        if emaA > emaB:
+            last_decision = 'buy'
+        elif emaB > emaA:
+            last_decision = 'sell'
+    """
 
 class EmaBot:
     """Main code for running the bot"""
