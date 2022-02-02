@@ -1,3 +1,10 @@
+*-local.sh
+*.bak
+data/
+log/
+*.csv
+etc/*.yml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
