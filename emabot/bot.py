@@ -68,6 +68,7 @@ def backtest_decider(emaA=12, emaB=26, csv_path=None) -> str:
     df = df.drop(columns=['open','high','low','volume'])
     df = df.resample('1h').ohlc()
     # flatten
+    # TODO: There is probably a better way to do this but I don't know Pandas well enough
     df['open'] = df['close']['open']
     df['high'] = df['close']['high']
     df['low'] = df['close']['low']
@@ -94,23 +95,6 @@ def backtest_decider(emaA=12, emaB=26, csv_path=None) -> str:
     elif emaB > emaA:
         last_decision = 'sell'
     return last_decision
-    """
-    # Turned this into a df.tail() call
-    bought = None
-    for (dt, r) in df.iterrows():
-        close = r['close'].item()
-        emaA = r['emaA'].item()
-        emaB = r['emaB'].item()
-        last_decision = 'noop'
-        if not bought and emaA > emaB:
-            bought = close
-        elif bought and emaB > emaA:
-            bought = None
-        if emaA > emaB:
-            last_decision = 'buy'
-        elif emaB > emaA:
-            last_decision = 'sell'
-    """
 
 class EmaBot:
     """Main code for running the bot"""
