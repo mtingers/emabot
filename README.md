@@ -23,7 +23,7 @@ pip install .
 
 Decompress the `*.csv.gz` files to get started.
 ```
-gunzip *.csv.gz
+gunzip csv/*.csv.gz
 ```
 
 Create directories:

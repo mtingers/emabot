@@ -1,7 +1,7 @@
 general:
   debug: False
   name: emabot-eth
-  hist_file: eth-history-1m-ohlc.csv
+  hist_file: csv/eth-history-1m-ohlc.csv
   log_dir: log/
   data_dir: data/
   # coinbase api stuff
