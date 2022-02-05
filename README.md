@@ -52,7 +52,7 @@ Setup a cronjob at every hour (set system tz to UTC first). Example:
 
 # Backtesting
 ```bash
-venv) emabot@local:/opt/emabot$ backtest  -h
+(venv) emabot@local:/opt/emabot$ backtest  -h
 usage: backtest [-h] --csv-file CSV_FILE
 
 optional arguments:

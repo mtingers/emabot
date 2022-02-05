@@ -20,6 +20,8 @@ setup(
         'requests',
         'PyYAML',
         'wheel',
+        'tabulate',
+        'tqdm',
     ],
     entry_points={
         'console_scripts': [
