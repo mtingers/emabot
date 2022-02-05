@@ -48,10 +48,10 @@ Setup a cronjob at every hour (set system tz to UTC first).
 
 **TODO** Determine if running per hour makes sense.
 The backtests show only transactions on `00:00:00`,
-which kind of makes sense, but I haven't had time to think about it.
-that will continue on until the next day,
-causing the validity of it to slip from the original price point
-if a buy is outside of `00:00:00`.  In somecases, it may be preferred to try on multiple hours, like
+which should make sense, but I haven't had time to think it all the way through.
+A decision at `00` will continue on until the next day,
+causing the validity of it to slip from the original price point determined at `00`
+In somecases, it may be preferred to try on multiple hours, like
 in the case of an error and a retry is needed (exchange is down).
 
 Example setup:
