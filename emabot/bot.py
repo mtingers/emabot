@@ -64,7 +64,8 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, csv_path: str = None) -> str:
     """Main buy/sell logic
         1) Read CSV OHLC file
         2) Convert timestamp to datetime index column
-        3) Resample to 1 hour OHLC
+        x) Resample to 1 hour OHLC. SKIPPED. Slows down backtests but overall performance is better.
+            Done originally to speed up bruteforcing algorithms and forgot about.
         4) Drop all columns except timestamp and close
         5) Resample to 1D OHLC
         6) Calculate EMAs
@@ -76,18 +77,9 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, csv_path: str = None) -> str:
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
-    df = df.resample('1h').ohlc()
-    # TODO: There is probably a better way to do this but I don't know Pandas well enough
-    df['open'] = df['close']['open']
-    df['high'] = df['close']['high']
-    df['low'] = df['close']['low']
-    df['close2'] = df['close']['close']
-    df = df.drop(columns=['close'])
-    df['close'] = df['close2']
-    df = df.drop(columns=['close2'])
     idf = df.resample('1D').ohlc()
-    df['emaA'] = ta.ema(idf['close']['']['close'], length=emaA)
-    df['emaB'] = ta.ema(idf['close']['']['close'], length=emaB)
+    df['emaA'] = ta.ema(idf['close']['close'], length=emaA)
+    df['emaB'] = ta.ema(idf['close']['close'], length=emaB)
     df.fillna(method='ffill', inplace=True)
     df.dropna(axis='rows', how='any', inplace=True)
     # Decision time

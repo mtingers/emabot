@@ -4,7 +4,7 @@ from setuptools import find_packages
 
 setup(
     name='EmaBot',
-    version='1.2.0',
+    version='1.3.0',
     author='Matth Ingersoll',
     author_email='matth@mtingers.com',
     packages=find_packages(),
@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'emabot=emabot.bot:main',
             'backtest=emabot.backtest:main',
+            'dumppickle=emabot.dumppickle:main',
         ],
     },
     classifiers=[

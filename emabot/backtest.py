@@ -42,17 +42,17 @@ def get_dataframes(csv_file, emaA=1, emaB=2):
     df_test = df_test.set_index("timestamp")
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
-    df = df.resample('1h').ohlc()
-    df['open'] = df['close']['open']
-    df['high'] = df['close']['high']
-    df['low'] = df['close']['low']
-    df['close2'] = df['close']['close']
-    df = df.drop(columns=['close'])
-    df['close'] = df['close2']
-    df = df.drop(columns=['close2'])
+    #df = df.resample('1h').ohlc()
+    #df['open'] = df['close']['open']
+    #df['high'] = df['close']['high']
+    #df['low'] = df['close']['low']
+    #df['close2'] = df['close']['close']
+    #df = df.drop(columns=['close'])
+    #df['close'] = df['close2']
+    #df = df.drop(columns=['close2'])
     idf = df.resample('1D').ohlc()
-    df['emaA'] = ta.ema(idf['close']['']['close'], length=emaA)
-    df['emaB'] = ta.ema(idf['close']['']['close'], length=emaB)
+    df['emaA'] = ta.ema(idf['close']['close'], length=emaA)
+    df['emaB'] = ta.ema(idf['close']['close'], length=emaB)
     df.fillna(method='ffill', inplace=True)
     df.dropna(axis='rows', how='any', inplace=True)
     return df
