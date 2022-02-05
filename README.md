@@ -49,9 +49,14 @@ Setup a cronjob at every hour (set system tz to UTC first).
 *TODO* **Determine if running per hour makes sense. The backtests shows only transactions on 00:00:00,
 which could be considered the 'origination decision' that will continue on until the next day,
 causing the validity of it to slip from the original price point.**
-Example:
+
+Example setup:
 ```
 00 * * * * (cd /opt/emabot && bash run.sh)
+# TODO: or once per day
+#00 00 * * * (cd /opt/emabot && bash run.sh)
+
+# Monitor each buy to report drops
 30 * * * * (cd /opt/emabot && bash monitor.sh)
 ```
 
