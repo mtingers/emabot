@@ -51,7 +51,7 @@ The backtests show only transactions on `00:00:00`,
 which should make sense, but I haven't had time to think it all the way through.
 A decision at `00` will continue on until the next day,
 causing the validity of it to slip from the original price point determined at `00`
-In somecases, it may be preferred to try on multiple hours, like
+In some cases, it may be preferred to try on multiple hours, like
 in the case of an error and a retry is needed (exchange is down).
 
 Example setup:
