@@ -6,6 +6,8 @@ CONFDIR=$HOMEDIR/etc
 
 cd $HOMEDIR
 for config in $CONFDIR/*.yml; do
+    echo ""
+    echo "--------------------------"
     echo "Run config: $config"
     $HOMEDIR/venv/bin/emabot --config "${config}"
 done
