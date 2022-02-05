@@ -45,9 +45,10 @@ vi etc/PORTFOLIO-NAME.yml
 ```
 
 Setup a cronjob at every hour (set system tz to UTC first).
-*TODO* **Determine if running per hour makes sense. Backtest shows only transactions on 00:00:00,
+
+*TODO* **Determine if running per hour makes sense. The backtests shows only transactions on 00:00:00,
 which could be considered the 'origination decision' that will continue on until the next day,
-causing the validness of it to slip.**
+causing the validity of it to slip from the original price point.**
 Example:
 ```
 00 * * * * (cd /opt/emabot && bash run.sh)
@@ -55,6 +56,8 @@ Example:
 ```
 
 # Backtesting
+[BTC Sample Backtest](/backtests/backtest-btc.log)
+[ETH Sample Backtest](/backtests/backtest-eth.log)
 ```bash
 (venv) emabot@local:/opt/emabot$ backtest  -h
 usage: backtest [-h] --csv-file CSV_FILE
