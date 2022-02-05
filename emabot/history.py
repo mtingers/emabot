@@ -3,6 +3,7 @@ import os
 import time
 import datetime
 from datetime import timedelta
+import json
 import cbpro
 
 os.environ['TZ'] = 'UTC'
@@ -54,6 +55,7 @@ def generate_historical_csv(outfile, pair='BTC-USD', days_ago=522):
         start_str = date2str(next_date)
         end_str = date2str(next_date+timedelta(hours=4))
         stats = None
+        error = False
         for attempt in range(14):
             try:
                 stats = public_client.get_product_historic_rates(
@@ -61,11 +63,13 @@ def generate_historical_csv(outfile, pair='BTC-USD', days_ago=522):
                     granularity=SIZE,
                     start=date2str(next_date),
                     end=date2str(next_date+timedelta(hours=4)))
+                error = False
                 break
             except json.decoder.JSONDecodeError as e:
                 print(e)
+                error = True
                 time.sleep(10)
-        if not stats:
+        if error:
             print('API_ERROR: history API failed after many retries')
             sys.exit(1)
         if 'message' in stats:
