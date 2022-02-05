@@ -60,20 +60,28 @@ def pchange_f(x1, x2) -> float:
     x2 = float(x2)
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
-def backtest_decider(emaA=12, emaB=26, csv_path=None) -> str:
-    """Main buy/sell logic"""
+def backtest_decider(emaA: int = 1, emaB: int = 2, csv_path: str = None) -> str:
+    """Main buy/sell logic
+        1) Read CSV OHLC file
+        2) Convert timestamp to datetime index column
+        3) Resample to 1 hour OHLC
+        4) Drop all columns except timestamp and close
+        5) Resample to 1D OHLC
+        6) Calculate EMAs
+        7) Fill NaNs (pandas ffill)
+        8) Drop NaN rows as a mistake guard
+        9) Compare the last dataframe's EMAs to make decision
+    """
     df = pd.read_csv(csv_path)
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
     df = df.resample('1h').ohlc()
-    # flatten
     # TODO: There is probably a better way to do this but I don't know Pandas well enough
     df['open'] = df['close']['open']
     df['high'] = df['close']['high']
     df['low'] = df['close']['low']
     df['close2'] = df['close']['close']
-    #df['close2'] = df['close']['low']
     df = df.drop(columns=['close'])
     df['close'] = df['close2']
     df = df.drop(columns=['close2'])
@@ -82,10 +90,7 @@ def backtest_decider(emaA=12, emaB=26, csv_path=None) -> str:
     df['emaB'] = ta.ema(idf['close']['']['close'], length=emaB)
     df.fillna(method='ffill', inplace=True)
     df.dropna(axis='rows', how='any', inplace=True)
-    # end flatten
-
-    # Make decision based off of emaA and emaB comparison
-    # Use tail end of dataframe
+    # Decision time
     last_decision = 'noop'
     close = df['close'].tail(1).item()
     emaA = df['emaA'].tail(1).item()
@@ -98,9 +103,15 @@ def backtest_decider(emaA=12, emaB=26, csv_path=None) -> str:
 
 class EmaBot:
     """Main code for running the bot"""
-    def __init__(self, config_path, dryrun=False, force_sell=False, monitor=False, debug=False):
+    def __init__(self,
+            config_path: str,
+            dryrun: bool = False,
+            force_sell: bool = False,
+            monitor: bool = False,
+            debug: bool = False):
         self.config_path = config_path
         self.debug = debug
+        self.force_sell = force_sell
         self.dryrun = dryrun
         self.monitor = monitor
         self.config = {}
@@ -242,35 +253,89 @@ class EmaBot:
         _api_response_check(response, Exception)
         return response
 
+    def _run_setup(self):
+        generate_historical_csv(self.hist_file, pair=self.pair, days_ago=522)
+        wallet = self.get_usd_wallet()
+        fees = self.get_fees()
+        price = self.get_price()
+        buy = None
+        pc = None
+        if os.path.exists(self.buy_path):
+            with open(self.buy_path, 'rb') as fd:
+                buy = pickle.load(fd)
+                pc = pchange(buy['real_price'], price)
+        self.logit('wallet:{}  fees:{}  price:{} pc:{}'.format(
+            wallet, [str(i) for i in fees], price, pc))
+        return (wallet, fees, price, buy)
+
+    def _run_buy(self, price, wallet) -> None:
+        self.logit('BUY: {}'.format(price))
+        if self.dryrun:
+            sys.exit(0)
+        response = self.buy_market(wallet)
+        self.logit('RESPONSE: {}'.format(response))
+        with open(self.buy_path+'.tmp', 'wb') as fd:
+            info = {
+                'wallet':wallet,
+                'date':TODAY,
+                'real_price':price,
+                'response':response,
+                'settled':False,
+                'buy_epoch':time.time()
+            }
+            pickle.dump(info, fd)
+        while 1:
+            time.sleep(5)
+            order = self.get_order(response['id'])
+            settled = order['settled']
+            status = order['status']
+            if settled:
+                info['settled'] = order
+                self.logit('BUY_SETTLED: {}'.format(order))
+                with open(self.buy_path+'.tmp', 'wb') as fd:
+                    pickle.dump(info, fd)
+                os.rename(self.buy_path+'.tmp', self.buy_path)
+                if self.email_enabled:
+                    self.send_email('BOUGHT: {}'.format(price), '')
+                break
+
+    def _run_sell(self, buy, price):
+        size = buy['settled']['filled_size']
+        self.logit('SELL: {} size:{}'.format(price, size))
+        if self.dryrun:
+            u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
+            u_after = float(price) * float(buy['settled']['filled_size'])
+            print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
+                buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
+            ))
+            sys.exit(0)
+        response = self.sell_market(size)
+        self.logit('RESPONSE: {}'.format(response))
+        while 1:
+            time.sleep(5)
+            order = self.get_order(response['id'])
+            settled = order['settled']
+            status = order['status']
+            if settled:
+                self.logit('SELL_SETTLED: {}'.format(order))
+                os.rename(self.buy_path, self.buy_path+'.prev')
+                profit = Decimal(order['executed_value']) - Decimal(buy['settled']['executed_value'])
+                self.logit('PROFIT: {} -> {} {:.2f} ({:.2f}%)'.format(
+                    buy['real_price'], price, profit, pchange(buy['real_price'], price)
+                ))
+                if self.email_enabled:
+                    self.send_email('SOLD: profit={:,.2f}'.format(profit), '')
+                    monitor_path = self.buy_path+'.monitor'
+                    os.rename(monitor_path, monitor_path+'.prev')
+                break
+
+
     def run(self) -> None:
         self.cb_auth()
         if self.monitor:
             return self._monitor()
         self.logit('run: ' + TODAY)
-        generate_historical_csv(self.hist_file, pair=self.pair, days_ago=522)
-        wallet = self.get_usd_wallet()
-        fees = self.get_fees()
-        price = self.get_price()
-        if os.path.exists(self.buy_path):
-            with open(self.buy_path, 'rb') as fd:
-                buy = pickle.load(fd)
-            pc = pchange(buy['real_price'], price)
-        else:
-            buy = None
-            pc = None
-        self.logit('wallet:{}  fees:{}  price:{} pc:{}'.format(
-            wallet, [str(i) for i in fees], price, pc))
-
-        # Debug settings and if sold now (if bought)
-        if self.dryrun:
-            print('Exiting before buy/sell logic because dryrun=True')
-            print('Dump settings:')
-            print('    ', self.name)
-            print('    ', self.pair)
-            print('    ', self.data_dir)
-            print('    ', self.log_dir)
-            print('    ', self.hist_file)
-            print('    ', self.buy_path)
+        wallet, fees, price, buy = self._run_setup()
 
         ###################################################################
         # buy/sell phase is here
@@ -278,67 +343,12 @@ class EmaBot:
         decision = backtest_decider(emaA=1, emaB=2, csv_path=self.hist_file)
         self.logit('DECISION: {}'.format(decision))
         if not buy and decision == 'buy':
-            # TODO: maybe break this out
-            self.logit('BUY: {}'.format(price))
-            if self.dryrun:
-                sys.exit(0)
-            response = self.buy_market(wallet)
-            self.logit('RESPONSE: {}'.format(response))
-            with open(self.buy_path+'.tmp', 'wb') as fd:
-                info = {
-                    'wallet':wallet,
-                    'date':TODAY,
-                    'real_price':price,
-                    'response':response,
-                    'settled':False,
-                    'buy_epoch':time.time()
-                }
-                pickle.dump(info, fd)
-            while 1:
-                time.sleep(5)
-                order = self.get_order(response['id'])
-                settled = order['settled']
-                status = order['status']
-                if settled:
-                    info['settled'] = order
-                    self.logit('BUY_SETTLED: {}'.format(order))
-                    with open(self.buy_path+'.tmp', 'wb') as fd:
-                        pickle.dump(info, fd)
-                    os.rename(self.buy_path+'.tmp', self.buy_path)
-                    if self.email_enabled:
-                        self.send_email('BOUGHT: {}'.format(price), '')
-                    break
+            self._run_buy(price, wallet)
         # SELL logic
-        elif buy and decision == 'sell':
-            # TODO: maybe break this out
-            size = buy['settled']['filled_size']
-            self.logit('SELL: {} size:{}'.format(price, size))
-            if self.dryrun:
-                u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
-                u_after = float(price) * float(buy['settled']['filled_size'])
-                print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
-                    buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
-                ))
-                sys.exit(0)
-            response = self.sell_market(size)
-            self.logit('RESPONSE: {}'.format(response))
-            while 1:
-                time.sleep(5)
-                order = self.get_order(response['id'])
-                settled = order['settled']
-                status = order['status']
-                if settled:
-                    self.logit('SELL_SETTLED: {}'.format(order))
-                    os.rename(self.buy_path, self.buy_path+'.prev')
-                    profit = Decimal(order['executed_value']) - Decimal(buy['settled']['executed_value'])
-                    self.logit('PROFIT: {} -> {} {:.2f} ({:.2f}%)'.format(
-                        buy['real_price'], price, profit, pchange(buy['real_price'], price)
-                    ))
-                    if self.email_enabled:
-                        self.send_email('SOLD: profit={:,.2f}'.format(profit), '')
-                        monitor_path = self.buy_path+'.monitor'
-                        os.rename(monitor_path, monitor_path+'.prev')
-                    break
+        elif buy and (decision == 'sell' or self.force_sell):
+            if self.force_sell:
+                self.logit('WARNING: Selling because force_sell=True')
+            self._run_sell(buy, price)
         else:
             self.logit('NOOP')
             if buy and self.dryrun:
