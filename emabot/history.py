@@ -53,7 +53,8 @@ def generate_historical_csv(outfile, pair='BTC-USD', days_ago=522):
     while next_date < end_date:
         start_str = date2str(next_date)
         end_str = date2str(next_date+timedelta(hours=4))
-        while 1:
+        stats = None
+        for attempt in range(14):
             try:
                 stats = public_client.get_product_historic_rates(
                     pair,
@@ -64,6 +65,9 @@ def generate_historical_csv(outfile, pair='BTC-USD', days_ago=522):
             except json.decoder.JSONDecodeError as e:
                 print(e)
                 time.sleep(10)
+        if not stats:
+            print('API_ERROR: history API failed after many retries')
+            sys.exit(1)
         if 'message' in stats:
             print('API_ERROR:', stats['message'])
             sys.exit(1)
