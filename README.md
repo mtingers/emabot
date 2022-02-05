@@ -49,3 +49,17 @@ Setup a cronjob at every hour (set system tz to UTC first). Example:
 00 * * * * (cd /opt/emabot && bash run.sh)
 30 * * * * (cd /opt/emabot && bash monitor.sh)
 ```
+
+# Backtesting
+```bash
+venv) emabot@local:/opt/emabot$ backtest  -h
+usage: backtest [-h] --csv-file CSV_FILE
+
+optional arguments:
+  -h, --help           show this help message and exit
+    --csv-file CSV_FILE  Path to OHLC CSV file
+```
+```bash
+(venv) emabot@local:/opt/emabot$ time backtest  --csv-file btc-history-1m-ohlc.csv
+  5%|███████▎                            | 2425/46628 [00:01<00:32, 1359.63it/s]
+```
