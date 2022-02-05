@@ -264,16 +264,17 @@ class EmaBot:
             with open(self.buy_path, 'rb') as fd:
                 buy = pickle.load(fd)
                 pc = pchange(buy['real_price'], price)
-        self.logit('wallet:{}  fees:{}  price:{} pc:{}'.format(
+        self.logit('>\n  bought_at={}\n  wallet={}\n  current_fees={}\n  price={}\n  percent_change={}'.format(
+            buy['real_price'] if buy and 'real_price' in buy else "-",
             wallet, [str(i) for i in fees], price, pc))
         return (wallet, fees, price, buy)
 
     def _run_buy(self, price, wallet) -> None:
-        self.logit('BUY: {}'.format(price))
+        self.logit('action=buy price={}'.format(price))
         if self.dryrun:
             sys.exit(0)
         response = self.buy_market(wallet)
-        self.logit('RESPONSE: {}'.format(response))
+        self.logit('buy_response={}'.format(response))
         with open(self.buy_path+'.tmp', 'wb') as fd:
             info = {
                 'wallet':wallet,
@@ -301,26 +302,26 @@ class EmaBot:
 
     def _run_sell(self, buy, price):
         size = buy['settled']['filled_size']
-        self.logit('SELL: {} size:{}'.format(price, size))
+        self.logit('action=sell price={} size={}'.format(price, size))
         if self.dryrun:
             u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
             u_after = float(price) * float(buy['settled']['filled_size'])
-            print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
+            print('if_sold_now: {} -> {} {:.2f} {:.2f}% change'.format(
                 buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
             ))
             sys.exit(0)
         response = self.sell_market(size)
-        self.logit('RESPONSE: {}'.format(response))
+        self.logit('sell_repsonse={}'.format(response))
         while 1:
             time.sleep(5)
             order = self.get_order(response['id'])
             settled = order['settled']
             status = order['status']
             if settled:
-                self.logit('SELL_SETTLED: {}'.format(order))
+                self.logit('sell_settled={}'.format(order))
                 os.rename(self.buy_path, self.buy_path+'.prev')
                 profit = Decimal(order['executed_value']) - Decimal(buy['settled']['executed_value'])
-                self.logit('PROFIT: {} -> {} {:.2f} ({:.2f}%)'.format(
+                self.logit('profit: buy_price={} -> sold_price={} profit={:.2f} ({:.2f}%)'.format(
                     buy['real_price'], price, profit, pchange(buy['real_price'], price)
                 ))
                 if self.email_enabled:
@@ -334,14 +335,13 @@ class EmaBot:
         self.cb_auth()
         if self.monitor:
             return self._monitor()
-        self.logit('run: ' + TODAY)
         wallet, fees, price, buy = self._run_setup()
 
         ###################################################################
         # buy/sell phase is here
         ###################################################################
         decision = backtest_decider(emaA=1, emaB=2, csv_path=self.hist_file)
-        self.logit('DECISION: {}'.format(decision))
+        self.logit('backtest_decider={}'.format(decision))
         if not buy and decision == 'buy':
             self._run_buy(price, wallet)
         # SELL logic
@@ -350,11 +350,11 @@ class EmaBot:
                 self.logit('WARNING: Selling because force_sell=True')
             self._run_sell(buy, price)
         else:
-            self.logit('NOOP')
+            self.logit('action=NOOP')
             if buy and self.dryrun:
                 u_before = float(buy['real_price']) * float(buy['settled']['filled_size'])
                 u_after = float(price) * float(buy['settled']['filled_size'])
-                print('IF_SOLD_NOW: {} -> {} {:.2f} {:.2f}% change'.format(
+                print('if_sold_now: {} -> {} {:.2f} {:.2f}% change'.format(
                     buy['real_price'], price, u_after - u_before, pchange_f(buy['real_price'], price)
                 ))
 
@@ -376,7 +376,7 @@ class EmaBot:
         pc = pchange(buy['real_price'], price)
         duration_hours = (time.time() - buy['buy_epoch'])/ 60.0 / 60.0
         if self.debug:
-            print('MONITOR: duration:{:.2f}h percent_change:{:,.2f}%  previous:'.format(
+            print('MONITOR: duration={:.2f}h percent_change={:,.2f}%  previous='.format(
                 duration_hours, pc))
             for m in monitor_history[::-1]:
                 print('    {:.2f}%'.format(m))
