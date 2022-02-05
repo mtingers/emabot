@@ -44,7 +44,11 @@ chmod 600 etc/PORTFOLOIO-NAME.yml
 vi etc/PORTFOLIO-NAME.yml
 ```
 
-Setup a cronjob at every hour (set system tz to UTC first). Example:
+Setup a cronjob at every hour (set system tz to UTC first).
+*TODO* **Determine if running per hour makes sense. Backtest shows only transactions on 00:00:00,
+which could be considered the 'origination decision' that will continue on until the next day,
+causing the validness of it to slip.**
+Example:
 ```
 00 * * * * (cd /opt/emabot && bash run.sh)
 30 * * * * (cd /opt/emabot && bash monitor.sh)
