@@ -61,8 +61,8 @@ Example setup:
 ```
 
 # Backtesting
-[BTC Sample Backtest](/backtests/backtest-btc.log)
-[ETH Sample Backtest](/backtests/backtest-eth.log)
+* [BTC Sample Backtest](/backtests/backtest-btc.log)
+* [ETH Sample Backtest](/backtests/backtest-eth.log)
 ```bash
 (venv) emabot@local:/opt/emabot$ backtest  -h
 usage: backtest [-h] --csv-file CSV_FILE
