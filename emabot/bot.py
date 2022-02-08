@@ -68,14 +68,12 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, resample: str = '1D', csv_pat
     """Main buy/sell logic
         1) Read CSV OHLC file
         2) Convert timestamp to datetime index column
-        x) Resample to 1 hour OHLC. SKIP: Originally done to speed up bruteforcing, but overall
-           buy/sell performance is better w/o it.
-        4) Drop all columns except timestamp and close
-        5) Resample OHLC
-        6) Calculate EMAs
-        7) Fill NaNs (pandas ffill)
-        8) Drop NaN rows as a mistake guard
-        9) Compare the last dataframe's EMAs to make decision
+        3) Drop all columns except timestamp and close
+        4) Resample OHLC
+        5) Calculate EMAs
+        6) Fill NaNs (pandas ffill)
+        7) Drop NaN rows as a mistake guard
+        8) Compare the last dataframe's EMAs to make decision
     """
     df = pd.read_csv(csv_path)
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
@@ -88,7 +86,6 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, resample: str = '1D', csv_pat
     df.dropna(axis='rows', how='any', inplace=True)
     # Decision time
     last_decision = 'noop'
-    close = df['close'].tail(1).item()
     emaA = df['emaA'].tail(1).item()
     emaB = df['emaB'].tail(1).item()
     if emaA > emaB:

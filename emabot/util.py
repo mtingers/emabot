@@ -22,10 +22,7 @@ def pdiff(old, new):
 
 def get_dataframes(csv_file: str, emaA: int = 1, emaB: int = 2, resample: str = '1D'):
     df = pd.read_csv(csv_file)
-    df_test = pd.read_csv(csv_file)
-    df_test.timestamp = pd.to_datetime(df_test.timestamp, unit='s')
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
-    df_test = df_test.set_index("timestamp")
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
     idf = df.resample(resample).ohlc()
@@ -49,6 +46,7 @@ def _backtest(df,
     bought = None
     fee = None
     for (timestamp, row) in df.iterrows():
+        progress_bar.update(1)
         close = row['close'].item()
         emaA = row['emaA'].item()
         emaB = row['emaB'].item()
@@ -90,7 +88,6 @@ def _backtest(df,
             stats.per_day['fee'][year_month_day].append(fee)
             stats.per_day['percent'][year_month_day].append(percent)
             stats.per_day['net_profit'][year_month_day].append(net_profit)
-        progress_bar.update(1)
     return stats
 
 def backtest(
