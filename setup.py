@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'emabot=emabot.bot:main',
             'backtest=emabot.backtest:main',
+            'backtestc2c=emabot.backtestc2c:main',
             'dumppickle=emabot.dumppickle:main',
         ],
     },
