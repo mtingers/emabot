@@ -70,12 +70,11 @@ Example setup:
 * [BTC Sample Backtest](/backtests/backtest-btc.log)
 * [ETH Sample Backtest](/backtests/backtest-eth.log)
 ```bash
-(venv) emabot@local:/opt/emabot$ backtest  -h
-usage: backtest [-h] --csv-file CSV_FILE
-
+(venv) emabot@local:/opt/emabot$ backtest -h
 optional arguments:
   -h, --help           show this help message and exit
-    --csv-file CSV_FILE  Path to OHLC CSV file
+  --csv-file CSV_FILE  Path to OHLC CSV file
+  --c2c                Coin-to-coin (higher precision)
 ```
 ```bash
 (venv) emabot@local:/opt/emabot$ time backtest  --csv-file btc-history-1m-ohlc.csv
