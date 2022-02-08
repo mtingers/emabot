@@ -1,4 +1,7 @@
 
+## [1.6.1] - 2022-02-07
+- Fix self.currency initialization
+
 ## [1.6.0] - 2022-02-07
 - Add debug logger
 - Scope decision variable from local to method to local to EmaBot class

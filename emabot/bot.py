@@ -112,6 +112,7 @@ class EmaBot:
         self.monitor = monitor
         self.config = {}
         self.name = None
+        self.currency = None
         self.pair = None
         self.b64secret = None
         self.passphrase = None
@@ -120,7 +121,6 @@ class EmaBot:
         self.log_dir = None
         self.hist_file = None
         self.buy_path = None
-        self.close = None
         self.decision = {'emaA':0.0, 'emaB':0.0, 'decision':'noop'}
         if self.debug:
             logger.setLevel(logging.DEBUG)
@@ -199,7 +199,6 @@ class EmaBot:
             server = smtplib.SMTP(self.mail_host)
             server.sendmail(self.mail_from, email, msg2)
             server.quit()
-
 
     def cb_auth(self) -> None:
         """Authenticate to coinbase api"""
