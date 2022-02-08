@@ -8,6 +8,9 @@ general:
   key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   passphrase: xxxxxxxxxxx
   b64secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  # This is the "wallet". Example: For BTC-USD, currency is USD. For ETH-BTC, currencty is BTC.
+  currency: USD
+  # Currency should match the second half (USD in this case)
   pair: ETH-USD
   send_email: True
   monitor_alert_change: -1.0

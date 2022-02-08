@@ -5,20 +5,17 @@ import os
 import sys
 import time
 import re
-import json
 import pickle
 import warnings
 import argparse
+from datetime import datetime
+from decimal import Decimal
+import smtplib
+import yaml
+import cbpro
 import numpy as np
 import pandas as pd
 import pandas_ta as ta
-from datetime import datetime
-from collections import deque
-from decimal import Decimal
-import smtplib
-import requests
-import yaml
-import cbpro
 from .history import generate_historical_csv
 
 os.environ['TZ'] = 'UTC'
@@ -26,6 +23,9 @@ time.tzset()
 TODAY = str(datetime.now()).split(' ')[0]
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
+class TradingDisabledError(Exception):
+    """Trading is disabled for currency"""
 
 def _api_response_check(response: dict, exception_to_raise: Exception) -> None:
     """Check the coinbase API response for 'message' (an error)"""
@@ -131,7 +131,7 @@ class EmaBot:
         if not 'general' in config:
             raise Exception('Missing config section "general"')
         for i in ('debug', 'name', 'log_dir', 'data_dir', 'key', 'passphrase', 'send_email',
-                'b64secret', 'pair', 'hist_file', 'monitor_alert_change'):
+                'b64secret', 'pair', 'hist_file', 'monitor_alert_change', 'currency', ):
             if not i in config['general']:
                 missing.append(i)
         if missing:
@@ -139,6 +139,7 @@ class EmaBot:
         self.config = config
         self.name = self.config['general']['name']
         self.pair = self.config['general']['pair']
+        self.currency = self.config['general']['currency']
         self.b64secret = self.config['general']['b64secret']
         self.passphrase = self.config['general']['passphrase']
         self.key = self.config['general']['key']
@@ -192,12 +193,16 @@ class EmaBot:
         self.auth_client = cbpro.AuthenticatedClient(
             self.key, self.b64secret, self.passphrase)
 
-    def get_usd_wallet(self) -> Decimal:
+    def get_wallet(self) -> Decimal:
         accounts = self.auth_client.get_accounts()
         _api_response_check(accounts, Exception)
         for account in accounts:
-            if account['currency'] == 'USD':
+            if self.debug:
+                self.logit('{}'.format(account))
+            if account['currency'] == self.currency:
                 wallet = Decimal(account['available'])
+                if not account['trading_enabled']:
+                    raise TradingDisabledError('trading_enabled=False for {}'.format(self.currency))
                 break
         assert wallet is not None, 'USD wallet was not found.'
         return wallet
@@ -247,7 +252,7 @@ class EmaBot:
 
     def _run_setup(self):
         generate_historical_csv(self.hist_file, pair=self.pair, days_ago=522)
-        wallet = self.get_usd_wallet()
+        wallet = self.get_wallet()
         fees = self.get_fees()
         price = self.get_price()
         buy = None
