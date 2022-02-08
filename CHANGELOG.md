@@ -1,4 +1,7 @@
 
+## [1.7.0] - 2022-02-07
+- Pass debug arg down to backtester
+
 ## [1.6.1] - 2022-02-07
 - Fix self.currency initialization
 

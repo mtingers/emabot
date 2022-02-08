@@ -41,6 +41,7 @@ def huf(f: Decimal):
 def _backtest(df, emaA: int = 1, emaB: int = 2, progress_bar: tqdm = None, debug: bool = False, c2c: bool = False):
     stats = Stats()
     if c2c:
+        # If its a coin-to-coin (e.g. ETH-BTC), set to ~$1000 BTC @41k
         stats.wallet = Decimal('0.0245')
     bought = None
     fee = None
@@ -59,8 +60,7 @@ def _backtest(df, emaA: int = 1, emaB: int = 2, progress_bar: tqdm = None, debug
                         timestamp, cur_price, emaA,
                         emaB, size, fee, stats.wallet))
         elif bought and emaB > emaA:
-            sell = cur_price
-            percent = pdiff(bought, sell)
+            percent = pdiff(bought, cur_price)
             net_profit = stats.wallet * ((percent/100)-FEE)
             stats.wallet = stats.wallet + net_profit
             if debug:
@@ -89,8 +89,8 @@ def _backtest(df, emaA: int = 1, emaB: int = 2, progress_bar: tqdm = None, debug
         progress_bar.update(1)
     return stats
 
-def backtest(emaA: int = 1, emaB: int = 2, csv_file: str = None, c2c: bool = False):
+def backtest(emaA: int = 1, emaB: int = 2, csv_file: str = None, debug: bool = False, c2c: bool = False):
     df = get_dataframes(csv_file, emaA=emaA, emaB=emaB)
     with tqdm(total=len(df)) as progress_bar:
-        stats = _backtest(df, emaA=emaA, emaB=emaB, progress_bar=progress_bar, c2c=c2c)
+        stats = _backtest(df, emaA=emaA, emaB=emaB, progress_bar=progress_bar, c2c=c2c, debug=debug)
     return stats
