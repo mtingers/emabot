@@ -10,6 +10,7 @@ import warnings
 import argparse
 from datetime import datetime
 from decimal import Decimal
+import logging
 import smtplib
 import yaml
 import cbpro
@@ -23,6 +24,9 @@ time.tzset()
 TODAY = str(datetime.now()).split(' ')[0]
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
+logger = logging.getLogger('emabot')
+
 
 class TradingDisabledError(Exception):
     """Trading is disabled for currency"""
@@ -91,7 +95,7 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, csv_path: str = None) -> str:
         last_decision = 'buy'
     elif emaB > emaA:
         last_decision = 'sell'
-    return last_decision
+    return {'emaA':emaA, 'emaB':emaB, 'decision':last_decision}
 
 class EmaBot:
     """Main code for running the bot"""
@@ -116,8 +120,17 @@ class EmaBot:
         self.log_dir = None
         self.hist_file = None
         self.buy_path = None
-        self.configure()
         self.close = None
+        self.decision = {'emaA':0.0, 'emaB':0.0, 'decision':'noop'}
+        if self.debug:
+            logger.setLevel(logging.DEBUG)
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            console_handler.setFormatter(formatter)
+            logger.addHandler(console_handler)
+            logger.debug('DEBUG=on')
+        self.configure()
 
     def configure(self) -> None:
         """Configure from yaml file"""
@@ -197,8 +210,7 @@ class EmaBot:
         accounts = self.auth_client.get_accounts()
         _api_response_check(accounts, Exception)
         for account in accounts:
-            if self.debug:
-                self.logit('{}'.format(account))
+            logger.debug('%s', account)
             if account['currency'] == self.currency:
                 wallet = Decimal(account['available'])
                 if not account['trading_enabled']:
@@ -289,12 +301,12 @@ class EmaBot:
             status = order['status']
             if settled:
                 info['settled'] = order
-                self.logit('BUY_SETTLED: {}'.format(order))
+                self.logit('buy_settled={}'.format(order))
                 with open(self.buy_path+'.tmp', 'wb') as fd:
                     pickle.dump(info, fd)
                 os.rename(self.buy_path+'.tmp', self.buy_path)
                 if self.email_enabled:
-                    self.send_email('BOUGHT: {}'.format(price), '')
+                    self.send_email('BOUGHT: price={} decision={}'.format(price, self.decision), '')
                 break
 
     def _run_sell(self, buy, price):
@@ -308,7 +320,7 @@ class EmaBot:
             ))
             sys.exit(0)
         response = self.sell_market(size)
-        self.logit('sell_repsonse={}'.format(response))
+        self.logit('sell_response={}'.format(response))
         while 1:
             time.sleep(5)
             order = self.get_order(response['id'])
@@ -322,7 +334,8 @@ class EmaBot:
                     buy['real_price'], price, profit, pchange(buy['real_price'], price)
                 ))
                 if self.email_enabled:
-                    self.send_email('SOLD: profit={:,.2f}'.format(profit), '')
+                    self.send_email('SOLD: price={} profit={} decision={}'.format(
+                        price, profit, self.decision), '')
                     monitor_path = self.buy_path+'.monitor'
                     os.rename(monitor_path, monitor_path+'.prev')
                 break
@@ -337,12 +350,12 @@ class EmaBot:
         ###################################################################
         # buy/sell phase is here
         ###################################################################
-        decision = backtest_decider(emaA=1, emaB=2, csv_path=self.hist_file)
-        self.logit('backtest_decider={}'.format(decision))
-        if not buy and decision == 'buy':
+        self.decision = backtest_decider(emaA=1, emaB=2, csv_path=self.hist_file)
+        self.logit('backtest_decider={}'.format(self.decision))
+        if not buy and self.decision['decision'] == 'buy':
             self._run_buy(price, wallet)
         # SELL logic
-        elif buy and (decision == 'sell' or self.force_sell):
+        elif buy and (self.decision['decision'] == 'sell' or self.force_sell):
             if self.force_sell:
                 self.logit('WARNING: Selling because force_sell=True')
             self._run_sell(buy, price)
@@ -373,10 +386,10 @@ class EmaBot:
         pc = pchange(buy['real_price'], price)
         duration_hours = (time.time() - buy['buy_epoch'])/ 60.0 / 60.0
         if self.debug:
-            print('MONITOR: duration={:.2f}h percent_change={:,.2f}%  previous='.format(
-                duration_hours, pc))
+            logger.debug('MONITOR: duration=%sh percent_change=%s%%  previous=',
+                duration_hours, pc)
             for m in monitor_history[::-1]:
-                print('    {:.2f}%'.format(m))
+                logger.debug('    %.2f%%', m)
         if len(monitor_history) > 1:
             mmax = max(monitor_history)
             mmin = min(monitor_history)
@@ -384,8 +397,7 @@ class EmaBot:
             if diff <= self.monitor_alert_change:
                 if self.email_enabled:
                     self.send_email('MONITOR-WARNING: diff={:.2f}'.format(diff), '')
-            if self.debug:
-                self.logit('MONITOR: diff={:.2f}'.format(diff))
+            logger.debug('MONITOR: diff=%s', diff)
         monitor_history.append(pc)
         with open(monitor_path, 'wb') as fd:
             pickle.dump(monitor_history, fd)
