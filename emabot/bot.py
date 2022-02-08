@@ -64,14 +64,14 @@ def pchange_f(x1, x2) -> float:
     x2 = float(x2)
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
-def backtest_decider(emaA: int = 1, emaB: int = 2, csv_path: str = None) -> str:
+def backtest_decider(emaA: int = 1, emaB: int = 2, resample: str = '1D', csv_path: str = None) -> str:
     """Main buy/sell logic
         1) Read CSV OHLC file
         2) Convert timestamp to datetime index column
-        x) Resample to 1 hour OHLC. SKIPPED. Slows down backtests but overall performance is better.
-            Done originally to speed up bruteforcing algorithms and forgot about.
+        x) Resample to 1 hour OHLC. SKIP: Originally done to speed up bruteforcing, but overall
+           buy/sell performance is better w/o it.
         4) Drop all columns except timestamp and close
-        5) Resample to 1D OHLC
+        5) Resample OHLC
         6) Calculate EMAs
         7) Fill NaNs (pandas ffill)
         8) Drop NaN rows as a mistake guard
@@ -81,7 +81,7 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, csv_path: str = None) -> str:
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
-    idf = df.resample('1D').ohlc()
+    idf = df.resample(resample).ohlc()
     df['emaA'] = ta.ema(idf['close']['close'], length=emaA)
     df['emaB'] = ta.ema(idf['close']['close'], length=emaB)
     df.fillna(method='ffill', inplace=True)
@@ -144,7 +144,8 @@ class EmaBot:
         if not 'general' in config:
             raise Exception('Missing config section "general"')
         for i in ('debug', 'name', 'log_dir', 'data_dir', 'key', 'passphrase', 'send_email',
-                'b64secret', 'pair', 'hist_file', 'monitor_alert_change', 'currency', ):
+                'b64secret', 'pair', 'hist_file', 'monitor_alert_change', 'currency',
+                'ema_a', 'ema_b', 'resample',):
             if not i in config['general']:
                 missing.append(i)
         if missing:
@@ -152,6 +153,9 @@ class EmaBot:
         self.config = config
         self.name = self.config['general']['name']
         self.pair = self.config['general']['pair']
+        self.ema_a = int(self.config['general']['ema_a'])
+        self.ema_b = int(self.config['general']['ema_b'])
+        self.resample = str(self.config['general']['resample'])
         self.currency = self.config['general']['currency']
         self.b64secret = self.config['general']['b64secret']
         self.passphrase = self.config['general']['passphrase']
@@ -349,7 +353,8 @@ class EmaBot:
         ###################################################################
         # buy/sell phase is here
         ###################################################################
-        self.decision = backtest_decider(emaA=1, emaB=2, csv_path=self.hist_file)
+        self.decision = backtest_decider(
+            emaA=self.ema_a, emaB=self.ema_b, csv_path=self.hist_file, resample=self.resample)
         self.logit('backtest_decider={}'.format(self.decision))
         if not buy and self.decision['decision'] == 'buy':
             self._run_buy(price, wallet)

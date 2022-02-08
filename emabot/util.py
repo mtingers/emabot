@@ -20,7 +20,7 @@ class Stats:
 def pdiff(old, new):
     return ((Decimal(new) - Decimal(old)) / Decimal(old)) * Decimal('100.0')
 
-def get_dataframes(csv_file, emaA=1, emaB=2):
+def get_dataframes(csv_file: str, emaA: int = 1, emaB: int = 2, resample: str = '1D'):
     df = pd.read_csv(csv_file)
     df_test = pd.read_csv(csv_file)
     df_test.timestamp = pd.to_datetime(df_test.timestamp, unit='s')
@@ -28,7 +28,7 @@ def get_dataframes(csv_file, emaA=1, emaB=2):
     df_test = df_test.set_index("timestamp")
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
-    idf = df.resample('1D').ohlc()
+    idf = df.resample(resample).ohlc()
     df['emaA'] = ta.ema(idf['close']['close'], length=emaA)
     df['emaB'] = ta.ema(idf['close']['close'], length=emaB)
     df.fillna(method='ffill', inplace=True)
@@ -38,7 +38,10 @@ def get_dataframes(csv_file, emaA=1, emaB=2):
 def huf(f: Decimal):
     return '{:,.2f}'.format(f)
 
-def _backtest(df, emaA: int = 1, emaB: int = 2, progress_bar: tqdm = None, debug: bool = False, c2c: bool = False):
+def _backtest(df,
+        emaA: int = 1, emaB: int = 2, resample: str = '1D',
+        progress_bar: tqdm = None,
+        debug: bool = False, c2c: bool = False):
     stats = Stats()
     if c2c:
         # If its a coin-to-coin (e.g. ETH-BTC), set to ~$1000 BTC @41k
@@ -53,6 +56,7 @@ def _backtest(df, emaA: int = 1, emaB: int = 2, progress_bar: tqdm = None, debug
         if not bought and emaA > emaB:
             bought = cur_price
             size = stats.wallet / bought
+            # skip fee here and apply at end
             fee = stats.wallet * FEE
             if debug:
                 print('{} BOUGHT: price={:,.2f} A={:,.2f} B={:,.2f} '
@@ -89,8 +93,10 @@ def _backtest(df, emaA: int = 1, emaB: int = 2, progress_bar: tqdm = None, debug
         progress_bar.update(1)
     return stats
 
-def backtest(emaA: int = 1, emaB: int = 2, csv_file: str = None, debug: bool = False, c2c: bool = False):
-    df = get_dataframes(csv_file, emaA=emaA, emaB=emaB)
+def backtest(
+        emaA: int = 1, emaB: int = 2, resample: str = '1D',
+        csv_file: str = None, debug: bool = False, c2c: bool = False):
+    df = get_dataframes(csv_file, emaA=emaA, emaB=emaB, resample=resample)
     with tqdm(total=len(df)) as progress_bar:
         stats = _backtest(df, emaA=emaA, emaB=emaB, progress_bar=progress_bar, c2c=c2c, debug=debug)
     return stats

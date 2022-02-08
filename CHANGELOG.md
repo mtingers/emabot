@@ -1,4 +1,8 @@
 
+## [2.0.0] - 2022-02-08
+- Refactor to make EMA and OHLC sizes configurable
+- Add ema_a, ema_b, and resample configuration options (to general)
+
 ## [1.7.0] - 2022-02-07
 - Pass debug arg down to backtester
 

@@ -14,6 +14,9 @@ general:
   pair: ETH-USD
   send_email: True
   monitor_alert_change: -1.0
+  ema_a: 1
+  ema_b: 2
+  resample: 1h
 
 email:
   mail_host: mail.example.com
