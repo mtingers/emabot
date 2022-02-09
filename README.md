@@ -81,7 +81,8 @@ optional arguments:
   --c2c                Coin-to-coin (higher precision)
 ```
 ```bash
-(venv) $ time backtest  --csv-file btc-history-1m-ohlc.csv
+(venv) $ time backtest  --csv-file btc-history-1m-ohlc.csv --ema-a 2 --ema-b 2 --resample 1D \
+    --strategy emabot.strats.backtestema.BacktestEma
   5%|███████▎                            | 2425/46628 [00:01<00:32, 1359.63it/s]
 ```
 
