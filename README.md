@@ -56,6 +56,9 @@ Example setup:
 # Monitor each buy to report drops
 30 * * * * (cd /opt/emabot && bash monitor.sh)
 ```
+# TODO
+- Dump current buys from data dir
+- Save buy/sell history to a structured format for stats
 
 # Backtesting
 * [BTC Sample Backtest](/backtests/backtest-btc.log)
