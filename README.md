@@ -64,14 +64,24 @@ Example setup:
 * [BTC Sample Backtest](/backtests/backtest-btc.log)
 * [ETH Sample Backtest](/backtests/backtest-eth.log)
 ```bash
-(venv) emabot@local:/opt/emabot$ backtest -h
+(venv) $ backtest --help
+usage: backtest [-h] --csv-file CSV_FILE [--resample RESAMPLE] [--ema-a EMA_A]
+                [--ema-b EMA_B] [--strategy STRATEGY] [--debug] [--dump-ohlc]
+                [--c2c]
+
 optional arguments:
   -h, --help           show this help message and exit
   --csv-file CSV_FILE  Path to OHLC CSV file
+  --resample RESAMPLE  Set the OHLC resample size (default:1D)
+  --ema-a EMA_A        Set the emaA paramater (default:1)
+  --ema-b EMA_B        Set the emaB paramater (default:2)
+  --strategy STRATEGY  Select which strategy class to use from strategy/
+  --debug              Enable debug output
+  --dump-ohlc          Dump the OHLC sequence data
   --c2c                Coin-to-coin (higher precision)
 ```
 ```bash
-(venv) emabot@local:/opt/emabot$ time backtest  --csv-file btc-history-1m-ohlc.csv
+(venv) $ time backtest  --csv-file btc-history-1m-ohlc.csv
   5%|███████▎                            | 2425/46628 [00:01<00:32, 1359.63it/s]
 ```
 
