@@ -44,23 +44,14 @@ chmod 600 etc/PORTFOLOIO-NAME.yml
 vi etc/PORTFOLIO-NAME.yml
 ```
 
-Setup a cronjob at every hour (set system tz to UTC first).
+Setup a cronjob at every hour.
 
-**TODO** Determine if running per hour makes sense.
-The backtests show only transactions on `00:00:00`,
-which should make sense, but I haven't had time to think it all the way through.
-A decision at `00` will continue on until the next day,
-causing the validity of it to slip from the original price point determined at `00`
-In some cases, it may be preferred to try on multiple hours, like
-in the case of an error and a retry is needed (exchange is down).
+Note the minute is set to `04` to avoid getting previous candles (causes the decider to be behind
+by 1 decision).
 
 Example setup:
 ```
-05 * * * * (cd /opt/emabot && bash run.sh)
-# TODO: or once per day
-#05 00 * * * (cd /opt/emabot && bash run.sh)
-# Or retry around 00
-#05 00,01,02,03 * * * (cd /opt/emabot && bash run.sh)
+04 * * * * (cd /opt/emabot && bash run.sh)
 
 # Monitor each buy to report drops
 30 * * * * (cd /opt/emabot && bash monitor.sh)
