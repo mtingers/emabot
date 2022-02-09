@@ -75,7 +75,8 @@ optional arguments:
   --resample RESAMPLE  Set the OHLC resample size (default:1D)
   --ema-a EMA_A        Set the emaA paramater (default:1)
   --ema-b EMA_B        Set the emaB paramater (default:2)
-  --strategy STRATEGY  Select which strategy class to use from strategy/
+  --strategy STRATEGY  Select which strategy class to use from (see
+                       emabot/strats/)
   --debug              Enable debug output
   --dump-ohlc          Dump the OHLC sequence data
   --c2c                Coin-to-coin (higher precision)

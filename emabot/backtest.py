@@ -143,7 +143,7 @@ def main() -> None:
         help='Set the emaB paramater (default:2)', dest='ema_b', required=False, default=2,
         type=int)
     parser.add_argument('--strategy',
-        help='Select which strategy class to use from strategy/', dest='strategy',
+        help='Select which strategy class to use from (see emabot/strats/)', dest='strategy',
         required=False, default='emabot.strats.backtestema.BacktestEma', type=str)
     parser.add_argument('--debug',
         help='Enable debug output', dest='debug', action='store_true', required=False)
