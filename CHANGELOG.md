@@ -1,4 +1,9 @@
 
+## [2.1.0] - 2022-02-09
+- Modularize backtest strats
+- Update README cron notes
+- Add dump_ohlc to debug the results
+
 ## [2.0.0] - 2022-02-08
 - Refactor to make EMA and OHLC sizes configurable
 - Add ema_a, ema_b, and resample configuration options (to general)

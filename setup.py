@@ -4,7 +4,7 @@ from setuptools import find_packages
 
 setup(
     name='EmaBot',
-    version='2.0.0',
+    version='2.1.0',
     author='Matth Ingersoll',
     author_email='matth@mtingers.com',
     packages=find_packages(),
