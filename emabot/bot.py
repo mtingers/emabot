@@ -86,13 +86,14 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, resample: str = '1D', csv_pat
     df.dropna(axis='rows', how='any', inplace=True)
     # Decision time
     last_decision = 'noop'
+    close = df['close'].tail(1).item()
     emaA = df['emaA'].tail(1).item()
     emaB = df['emaB'].tail(1).item()
     if emaA > emaB:
         last_decision = 'buy'
     elif emaB > emaA:
         last_decision = 'sell'
-    return {'emaA':emaA, 'emaB':emaB, 'decision':last_decision}
+    return {'emaA':emaA, 'emaB':emaB, 'decision':last_decision, 'close':close}
 
 class EmaBot:
     """Main code for running the bot"""
@@ -210,7 +211,6 @@ class EmaBot:
         accounts = self.auth_client.get_accounts()
         _api_response_check(accounts, Exception)
         for account in accounts:
-            logger.debug('%s', account)
             if account['currency'] == self.currency:
                 wallet = Decimal(account['available'])
                 if not account['trading_enabled']:
@@ -353,6 +353,7 @@ class EmaBot:
         self.decision = backtest_decider(
             emaA=self.ema_a, emaB=self.ema_b, csv_path=self.hist_file, resample=self.resample)
         self.logit('backtest_decider={}'.format(self.decision))
+        logger.debug('decider=%s price=%s', self.decision, price)
         if not buy and self.decision['decision'] == 'buy':
             self._run_buy(price, wallet)
         # SELL logic

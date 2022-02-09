@@ -30,6 +30,8 @@ def main() -> None:
         type=int)
     parser.add_argument('--debug',
         help='Enable debug output', dest='debug', action='store_true', required=False)
+    parser.add_argument('--dump-ohlc',
+        help='Dump the OHLC sequence data', dest='dump_ohlc', action='store_true', required=False)
     parser.add_argument('--c2c',
         help='Coin-to-coin (higher precision)', dest='c2c', action='store_true', required=False)
     args = parser.parse_args()
@@ -38,7 +40,10 @@ def main() -> None:
     stats = backtest(
         emaA=args.ema_a, emaB=args.ema_b, resample=args.resample,
         csv_file=args.csv_file,
-        c2c=args.c2c, debug=args.debug)
+        c2c=args.c2c, debug=args.debug,
+        dump_ohlc=args.dump_ohlc)
+    if args.dump_ohlc:
+        return
     fee_total = sum([sum(i) for i in stats.per_day['fee'].values()])
     percent_total = sum([sum(i) for i in stats.per_day['percent'].values()])
     net_profit_total = sum([sum(i) for i in stats.per_day['net_profit'].values()])

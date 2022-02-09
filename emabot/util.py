@@ -92,8 +92,13 @@ def _backtest(df,
 
 def backtest(
         emaA: int = 1, emaB: int = 2, resample: str = '1D',
-        csv_file: str = None, debug: bool = False, c2c: bool = False):
+        csv_file: str = None, debug: bool = False, c2c: bool = False, dump_ohlc: bool = False):
     df = get_dataframes(csv_file, emaA=emaA, emaB=emaB, resample=resample)
-    with tqdm(total=len(df)) as progress_bar:
-        stats = _backtest(df, emaA=emaA, emaB=emaB, progress_bar=progress_bar, c2c=c2c, debug=debug)
+    if dump_ohlc:
+        print('Dumping OHLC:')
+        for (timestamp, row) in df.iterrows():
+            print(timestamp, row['close'].item(), row['emaA'].item(), row['emaB'].item())
+    else:
+        with tqdm(total=len(df)) as progress_bar:
+            stats = _backtest(df, emaA=emaA, emaB=emaB, progress_bar=progress_bar, c2c=c2c, debug=debug)
     return stats
