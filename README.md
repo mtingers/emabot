@@ -56,11 +56,11 @@ in the case of an error and a retry is needed (exchange is down).
 
 Example setup:
 ```
-00 * * * * (cd /opt/emabot && bash run.sh)
+05 * * * * (cd /opt/emabot && bash run.sh)
 # TODO: or once per day
-#00 00 * * * (cd /opt/emabot && bash run.sh)
+#05 00 * * * (cd /opt/emabot && bash run.sh)
 # Or retry around 00
-#00 00,01,02,03 * * * (cd /opt/emabot && bash run.sh)
+#05 00,01,02,03 * * * (cd /opt/emabot && bash run.sh)
 
 # Monitor each buy to report drops
 30 * * * * (cd /opt/emabot && bash monitor.sh)
