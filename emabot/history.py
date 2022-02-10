@@ -61,6 +61,7 @@ def generate_historical_csv(outfile, pair='BTC-USD', days_ago=522, debug=False):
 
     if debug:
         print('start_date:', start_date, 'next_date:', end_date)
+    misses = 0
     while next_date < end_date:
         start_str = date2str(next_date)
         end_str = date2str(next_date+timedelta(hours=4))
@@ -92,10 +93,11 @@ def generate_historical_csv(outfile, pair='BTC-USD', days_ago=522, debug=False):
         next_date = next_date + timedelta(hours=4)
         # stats are from newest to oldest, so reverse it
         stats.reverse()
-        if len(stats) < 3:
-            if debug:
-                print('len(stats) < 3. Could mean there is no data in this range or it completed.')
-            break
+        if len(stats) < 1:
+            misses += 1
+            if misses > 10:
+                print('stats len < 1 {} times. stopping.'.format(misses))
+                break
         for i in stats:
             (tstamp, low, high, x_open, x_close, x_volume) = i
             if last_date and last_date >= tstamp:
