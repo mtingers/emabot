@@ -12,7 +12,16 @@
 Install emabot:
 ```
 # debian:
-apt install gcc g++
+apt install gcc g++ make
+
+# Install TA-lib so pandas_ta uses a stable EMA calculation
+# Required for Python TA-lib to build on pip install
+cd talib/
+tar -xzf ta-lib-0.4.0-src.tar.gz
+./configure --prefix=/usr
+make
+sudo make install
+cd ..
 
 python3 -m venv venv
 . venv/bin/activate
