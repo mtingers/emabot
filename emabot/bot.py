@@ -15,11 +15,12 @@ import smtplib
 import yaml
 import cbpro
 import numpy as np
+import talib
 import pandas as pd
 import pandas_ta as ta
 from .history import generate_historical_csv
 
-#pd.set_option('display.max_rows', None)
+pd.set_option('display.max_rows', None)
 os.environ['TZ'] = 'UTC'
 time.tzset()
 TODAY = str(datetime.now()).split(' ')[0]
@@ -95,16 +96,25 @@ def backtest_decider(
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
+    # Resample needs to be done for further stabalization of EMA, otherwise it will vary per run
     idf = df.resample(resample).ohlc()
-    df['emaA'] = ta.ema(idf['close']['close'], length=emaA)
-    df['emaB'] = ta.ema(idf['close']['close'], length=emaB)
-    df.fillna(method='ffill', inplace=True)
-    df.dropna(axis='rows', how='any', inplace=True)
+    # explicitly use talib because pandas_ta sometimes doesn't work right and provides an
+    # unstable EMA (as far as testing could tell)
+    # It is important to note that this can differ from backtests since those are calculated in
+    # one call for the entire dataset. It is even more _important_ to note that 'resample' needs
+    # to match the timing of the cronjob. Example: 1D should run once per day at 00, or 12h should
+    # run twice per day at 00 and 12
+    emaA = talib.EMA(idf['close']['close'], emaA)
+    emaB = talib.EMA(idf['close']['close'], emaB)
+    # don't need this anymore since EMA calc was moved outside of storing within df
+    #df.fillna(method='ffill', inplace=True)
+    #df.dropna(axis='rows', how='any', inplace=True)
     # Decision time
     last_decision = 'noop'
     close = df['close'].tail(1).item()
-    emaA = df['emaA'].tail(1).item()
-    emaB = df['emaB'].tail(1).item()
+    print(emaA.tail(20))
+    emaA = emaA.tail(1).item()
+    emaB = emaB.tail(1).item()
     if emaA > emaB:
         last_decision = 'buy'
     elif emaB > emaA:
@@ -371,7 +381,8 @@ class EmaBot:
             emaB=self.ema_b,
             csv_path=self.hist_file,
             resample=self.resample,
-            cur_price=price
+            # this should not matter unless a not so sane resmaple size is used
+            #cur_price=price
         )
         self.logit('backtest_decider={}'.format(self.decision))
         logger.debug('decider=%s price=%s', self.decision, price)

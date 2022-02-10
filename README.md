@@ -18,10 +18,11 @@ apt install gcc g++ make
 # Required for Python TA-lib to build on pip install
 cd talib/
 tar -xzf ta-lib-0.4.0-src.tar.gz
+cd ta-lib
 ./configure --prefix=/usr
 make
 sudo make install
-cd ..
+cd ../../
 
 python3 -m venv venv
 . venv/bin/activate
@@ -53,14 +54,26 @@ chmod 600 etc/PORTFOLOIO-NAME.yml
 vi etc/PORTFOLIO-NAME.yml
 ```
 
-Setup a cronjob at every hour.
+*IMPORTANT* Before continuing make sure to read and understand this section about cronjobs and
+how it relates to resample time.
 
-Note the minute is set to `04` to avoid getting previous candles (causes the decider to be behind
-by 1 decision).
+* Cronjobs need to match the resample time closely
+* If there is a mismatch in the resample time and period at which the cronjob runs, an invalid EMA
+  will be calculated.
+* Example: If a resample time of `1D` is specified, the cronjob should _only_ run at `00` hour.
+* Example: If a resample time of `12h` is specified, the cronjob should run at both `12` and `00`
+  hours.
+* Example: If a resample time of `1h` is specified, the cronjob should run at every hour.
+* If you are setting up different resample times for config, you will need to manually create
+  separate copies of run.sh.
+
 
 Example setup:
 ```
-04 * * * * (cd /opt/emabot && bash run.sh)
+# For a 1D resample time
+00 00 * * * * (cd /opt/emabot && bash run.sh)
+# For a 12h resample time
+00 00,12 * * * * (cd /opt/emabot && bash run.sh)
 
 # Monitor each buy to report drops
 30 * * * * (cd /opt/emabot && bash monitor.sh)

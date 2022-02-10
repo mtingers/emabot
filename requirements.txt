@@ -7,4 +7,4 @@ requests
 wheel
 tabulate
 tqdm
-TA-Lib==0.4.24
+TA-Lib

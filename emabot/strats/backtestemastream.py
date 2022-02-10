@@ -1,4 +1,5 @@
 from decimal import Decimal
+import talib
 import pandas as pd
 import pandas_ta as ta
 from ..backtest import BacktestBase
@@ -23,8 +24,10 @@ class BacktestEmaStream(BacktestBase):
             return
         df = self._df.loc[(self._df.index <= timestamp)] #copy(deep=True)
         idf = df.resample(self._resample).ohlc()
-        df['emaA'] = ta.ema(idf['close']['close'], length=self._emaA)
-        df['emaB'] = ta.ema(idf['close']['close'], length=self._emaB)
+        #df['emaA'] = ta.ema(idf['close']['close'], length=self._emaA)
+        #df['emaB'] = ta.ema(idf['close']['close'], length=self._emaB)
+        df['emaA'] = talib.EMA(idf['close']['close'], self._emaA)
+        df['emaB'] = talib.EMA(idf['close']['close'], self._emaB)
         df.fillna(method='ffill', inplace=True)
         df.dropna(axis='rows', how='any', inplace=True)
         if df.empty:
