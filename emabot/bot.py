@@ -19,6 +19,7 @@ import pandas as pd
 import pandas_ta as ta
 from .history import generate_historical_csv
 
+#pd.set_option('display.max_rows', None)
 os.environ['TZ'] = 'UTC'
 time.tzset()
 TODAY = str(datetime.now()).split(' ')[0]
@@ -64,7 +65,12 @@ def pchange_f(x1, x2) -> float:
     x2 = float(x2)
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
-def backtest_decider(emaA: int = 1, emaB: int = 2, resample: str = '1D', csv_path: str = None) -> str:
+def backtest_decider(
+        emaA: int = 1,
+        emaB: int = 2,
+        resample: str = '1D',
+        cur_price: float = None,
+        csv_path: str = None) -> str:
     """Main buy/sell logic
         1) Read CSV OHLC file
         2) Convert timestamp to datetime index column
@@ -76,6 +82,16 @@ def backtest_decider(emaA: int = 1, emaB: int = 2, resample: str = '1D', csv_pat
         8) Compare the last dataframe's EMAs to make decision
     """
     df = pd.read_csv(csv_path)
+    if cur_price:
+        # Add the current price to the tail end for a more accurate calculation
+        # timestamp       low      high      open     close    volume
+        df.loc[len(df.index)] = [
+            int(time.time()),
+            float(cur_price),
+            float(cur_price),
+            float(cur_price),
+            float(cur_price), 2.0
+        ]
     df.timestamp = pd.to_datetime(df.timestamp, unit='s')
     df = df.set_index("timestamp")
     df = df.drop(columns=['open','high','low','volume'])
@@ -351,7 +367,12 @@ class EmaBot:
         # buy/sell phase is here
         ###################################################################
         self.decision = backtest_decider(
-            emaA=self.ema_a, emaB=self.ema_b, csv_path=self.hist_file, resample=self.resample)
+            emaA=self.ema_a,
+            emaB=self.ema_b,
+            csv_path=self.hist_file,
+            resample=self.resample,
+            cur_price=price
+        )
         self.logit('backtest_decider={}'.format(self.decision))
         logger.debug('decider=%s price=%s', self.decision, price)
         if not buy and self.decision['decision'] == 'buy':
