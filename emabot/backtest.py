@@ -1,6 +1,6 @@
 """Backtest using the 1m-olhcv csv files
 
-emaA=1,emaB=2 tested the best from the bruteforce.
+emaA=2,emaB=3 tested the best from the bruteforce.
 """
 from abc import ABCMeta, abstractmethod
 from abc import ABC
@@ -110,8 +110,8 @@ class BacktestBase(ABC):
         self.stats.per_day['net_profit'][year_month_day].append(profit)
 
 def backtest(
-        emaA: int = 1,
-        emaB: int = 2,
+        emaA: int = 2,
+        emaB: int = 3,
         resample: str = '1D',
         csv_file: str = None,
         debug: bool = False,
@@ -141,10 +141,10 @@ def main() -> None:
         help='Set the OHLC resample size (default:1D)', dest='resample', required=False,
         default='1D')
     parser.add_argument('--ema-a',
-        help='Set the emaA paramater (default:1)', dest='ema_a', required=False, default=1,
+        help='Set the emaA paramater (default:2)', dest='ema_a', required=False, default=2,
         type=int)
     parser.add_argument('--ema-b',
-        help='Set the emaB paramater (default:2)', dest='ema_b', required=False, default=2,
+        help='Set the emaB paramater (default:3)', dest='ema_b', required=False, default=3,
         type=int)
     parser.add_argument('--strategy',
         help='Select which strategy class to use (see emabot/strats/)', dest='strategy',

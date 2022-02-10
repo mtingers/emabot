@@ -66,8 +66,8 @@ def pchange_f(x1, x2) -> float:
     return truncate_f(((x2 - x1) / x1) * 100., 1)
 
 def backtest_decider(
-        emaA: int = 1,
-        emaB: int = 2,
+        emaA: int = 2,
+        emaB: int = 3,
         resample: str = '1D',
         cur_price: float = None,
         csv_path: str = None) -> str:

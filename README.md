@@ -82,8 +82,8 @@ optional arguments:
   -h, --help           show this help message and exit
   --csv-file CSV_FILE  Path to OHLC CSV file
   --resample RESAMPLE  Set the OHLC resample size (default:1D)
-  --ema-a EMA_A        Set the emaA paramater (default:1)
-  --ema-b EMA_B        Set the emaB paramater (default:2)
+  --ema-a EMA_A        Set the emaA paramater (default:2)
+  --ema-b EMA_B        Set the emaB paramater (default:3)
   --strategy STRATEGY  Select which strategy class to use (see emabot/strats/)
   --debug              Enable debug output
   --dump-ohlc          Dump the OHLC sequence data
@@ -91,7 +91,7 @@ optional arguments:
 ```
 ```bash
 (venv) $ time backtest  --csv-file csv/btc-history-1m-ohlc.csv \
-    --ema-a 1 --ema-b 2 \
+    --ema-a 2 --ema-b 3 \
     --resample 1D \
     --strategy emabot.strats.backtestema.BacktestEma
   5%|███████▎                            | 2425/46628 [00:01<00:32, 1359.63it/s]
