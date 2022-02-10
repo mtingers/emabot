@@ -52,7 +52,8 @@ class BacktestBase(ABC):
         """Run the backtest"""
         for (timestamp, row) in self._next_row():
             self.backtest(timestamp, row)
-
+            if self.stats.wallet < 1:
+                break
 
     def _next_row(self) -> tuple:
         """Generate from self._df.iterrows()"""
@@ -126,7 +127,10 @@ def backtest(
         for (timestamp, row) in backtester._df.iterrows():
             print(timestamp, row['close'].item(), row['emaA'].item(), row['emaB'].item())
     else:
-        backtester.run()
+        try:
+            backtester.run()
+        except KeyboardInterrupt:
+            print('NOTICE: Early exit because ctrl-c')
     return backtester.stats
 
 def main() -> None:
