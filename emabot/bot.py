@@ -112,7 +112,6 @@ def backtest_decider(
     # Decision time
     last_decision = 'noop'
     close = df['close'].tail(1).item()
-    print(emaA.tail(20))
     emaA = emaA.tail(1).item()
     emaB = emaB.tail(1).item()
     if emaA > emaB:
