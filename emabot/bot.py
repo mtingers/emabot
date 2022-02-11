@@ -71,7 +71,8 @@ def backtest_decider(
         emaB: int = 3,
         resample: str = '1D',
         cur_price: float = None,
-        csv_path: str = None) -> str:
+        csv_path: str = None,
+        debug: bool = False) -> str:
     """Main buy/sell logic
         1) Read CSV OHLC file
         2) Convert timestamp to datetime index column
@@ -113,7 +114,8 @@ def backtest_decider(
     last_decision = 'noop'
     close = df['close'].tail(1).item()
     # Take the 2nd to last item (assuming cronjob is scheduled properly)
-    print(emaA.tail(10))
+    if debug:
+        print(emaA.tail(10))
     emaA = emaA.tail(2).head(1).item()
     emaB = emaB.tail(2).head(1).item()
     if emaA > emaB:
@@ -382,6 +384,7 @@ class EmaBot:
             emaB=self.ema_b,
             csv_path=self.hist_file,
             resample=self.resample,
+            debug=self.debug,
             # this should not matter unless a not so sane resmaple size is used
             #cur_price=price
         )
