@@ -60,21 +60,24 @@ how it relates to resample time.
 * Cronjobs need to match the resample time closely
 * If there is a mismatch in the resample time and period at which the cronjob runs, an invalid EMA
   will be calculated.
-* A cronjob must be scheduled to run right before the next EMA period.
-* Example: If a resample time of `1D` is specified, the cronjob should _only_ run at
-  `55 00 * * *`
-* Example: If a resample time of `12h` is specified, the cronjob should run twice per day like:
-  `55 23,11 * * *`
+* The bot selects the previous calculated EMA (not the latest since that require the entire resample
+  period to be stable). This means that the cronjob needs to be scheduled closely after the resample
+  time.
+* Example: If a resample time of `1D` is specified, the cronjob will be:
+  `04 00 * * *`
+* Example: If a resample time of `12h` is specified, the cronjob should run twice per day:
+  `04 00,12 * * *`
 * Example: If a resample time of `1h` is specified, the cronjob should run once per hour like:
-  `55 * * * *`
-
+  `04 * * * *`
+* It is recommended to set the cronjob's minute not to `00` but a few minutes after to ensure the
+  exchange gives you the latest data that maps to the resample period.
 
 Example setup:
 ```
 # For a 1D resample time
-55 23 * * * (cd /opt/emabot && venv/bin/emabot --config etc/myconfig.yml)
+04 00 * * * (cd /opt/emabot && venv/bin/emabot --config etc/myconfig.yml)
 # For a 12h resample time
-55 23,11 * * * (cd /opt/emabot && venv/bin/emabot --config etc/myconfig.yml)
+04 00,12* * * (cd /opt/emabot && venv/bin/emabot --config etc/myconfig.yml)
 
 # Monitor each buy to report drops
 30 * * * * (cd /opt/emabot && bash monitor.sh)

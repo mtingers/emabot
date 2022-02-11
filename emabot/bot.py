@@ -112,8 +112,10 @@ def backtest_decider(
     # Decision time
     last_decision = 'noop'
     close = df['close'].tail(1).item()
-    emaA = emaA.tail(1).item()
-    emaB = emaB.tail(1).item()
+    # Take the 2nd to last item (assuming cronjob is scheduled properly)
+    print(emaA.tail(10))
+    emaA = emaA.tail(2).head(1).item()
+    emaB = emaB.tail(2).head(1).item()
     if emaA > emaB:
         last_decision = 'buy'
     elif emaB > emaA:
