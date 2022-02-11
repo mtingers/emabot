@@ -252,9 +252,15 @@ class EmaBot:
         """Get the current account fees for maker/taker"""
         fees = self.auth_client._send_message('get', '/fees')
         _api_response_check(fees, Exception)
-        maker_fee = Decimal(fees['maker_fee_rate'])
-        taker_fee = Decimal(fees['taker_fee_rate'])
-        usd_volume = Decimal(fees['usd_volume'])
+        maker_fee = Decimal('0.0')
+        taker_fee = Decimal('0.0')
+        usd_volume = Decimal('0.0')
+        if fees['maker_fee_rate']:
+            maker_fee = Decimal(fees['maker_fee_rate'])
+        if fees['taker_fee_rate']:
+            taker_fee = Decimal(fees['taker_fee_rate'])
+        if fees['usd_volume']:
+            usd_volume = Decimal(fees['usd_volume'])
         return (maker_fee, taker_fee, usd_volume)
 
     def get_price(self) -> Decimal:
