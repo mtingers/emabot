@@ -1,4 +1,5 @@
 # WIP: hasn't really been tested but might work?
+# Probably need a volume to mount etc and data dirs (maybe log too)
 FROM python:3.9
 WORKDIR /app
 ADD . .
