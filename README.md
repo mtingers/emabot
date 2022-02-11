@@ -54,7 +54,7 @@ chmod 600 etc/PORTFOLOIO-NAME.yml
 vi etc/PORTFOLIO-NAME.yml
 ```
 
-*IMPORTANT* Before continuing make sure to read and understand this section about cronjobs and
+**IMPORTANT** Before continuing make sure to read and understand this section about cronjobs and
 how it relates to resample time.
 
 * Cronjobs need to match the resample time closely
@@ -83,8 +83,8 @@ Example setup:
 30 * * * * (cd /opt/emabot && venv/bin/emabot --monitor --config etc/myconfig.yml)
 ```
 # Backtesting
-* [BTC Sample Backtest](/backtests/backtest-btc.log)
-* [ETH Sample Backtest](/backtests/backtest-eth.log)
+* [BTC Sample Backtest](/backtests/btc-2-3-1D.log)
+* [ETH Sample Backtest](/backtests/eth-2-3-1D.log)
 ```bash
 (venv) $ backtest --help
 usage: backtest [-h] --csv-file CSV_FILE [--resample RESAMPLE] [--ema-a EMA_A]
