@@ -2,10 +2,10 @@ from decimal import Decimal
 import talib
 import pandas as pd
 import pandas_ta as ta
-from ..backtest import BacktestBase
+from .base import BacktestBase
 pd.options.mode.chained_assignment = None
 
-class BacktestEmaStream(BacktestBase):
+class EmaStream(BacktestBase):
     def init(self, *args, **kwargs):
         self._df = self._df.drop(columns=['open','high','low','volume'])
         #idf = self._df.resample(kwargs['resample']).ohlc()
