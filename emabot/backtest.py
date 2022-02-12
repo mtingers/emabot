@@ -6,8 +6,22 @@ import argparse
 from decimal import Decimal
 from tabulate import tabulate
 import numpy as np
+from tinydb import TinyDB, Query
+from tinydb.storages import JSONStorage
+from tinydb_serialization import SerializationMiddleware
+from tinydb_serialization import Serializer
 from .util import huf, import_class
 from .backtests.base import Stats
+
+
+class DecimalSerializer(Serializer):
+    OBJ_CLASS = Decimal
+
+    def encode(self, obj):
+        return str(obj)
+
+    def decode(self, s):
+        return float(s)
 
 def backtest(
         emaA: int = 2,
@@ -61,6 +75,16 @@ def main() -> None:
     args = parser.parse_args()
     print('ARGS: emaA={} emaB={} resample={} c2c={} strategy={}'.format(
         args.ema_a, args.ema_b, args.resample, args.c2c, args.strategy))
+
+    # Create a TinyDB table to store results in
+    table_name = '{}-{}-{}-{}-{}'.format(
+        args.ema_a, args.ema_b, args.resample, args.strategy.split('.')[-1],
+        args.csv_file.split('.csv')[0])
+    serialization = SerializationMiddleware(JSONStorage)
+    serialization.register_serializer(DecimalSerializer(), 'TinyDecimal')
+    db = TinyDB('backtests/db.json', storage=serialization)
+    table = db.table(table_name)
+
     sys.stdout.flush() # make sure ARGS outputs before tqdm
     stats = backtest(
         emaA=args.ema_a, emaB=args.ema_b, resample=args.resample,
@@ -108,6 +132,19 @@ def main() -> None:
         'Transactions',
         ])
     )
+    db_results = {
+        'fee_total':fee_total,
+        'net_profit_total':net_profit_total,
+        'net_profit_mean':net_profit_mean,
+        'net_profit_median':net_profit_median,
+        'percent_total':percent_total,
+        'percent_mean':percent_mean,
+        'percent_median':percent_median,
+        'wins':stats.wins,
+        'losses':stats.losses,
+        'day_results':day_results,
+    }
+    table.insert(db_results)
     results = {
         'Monthly Mean Percent':[huf(percent_mean)],
         'Monthly Median Percent':[huf(percent_median)],
