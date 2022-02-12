@@ -115,11 +115,19 @@ def backtest_decider(
     close = df['close'].tail(1).item()
     # Take the 2nd to last item (assuming cronjob is scheduled properly)
     if debug:
-        print(emaA.tail(10))
+        print(emaA.tail(20))
+        print(emaB.tail(20))
+    prev_emaA = emaA.tail(3).head(1).item()
+    prev_emaB = emaB.tail(3).head(1).item()
     emaA = emaA.tail(2).head(1).item()
     emaB = emaB.tail(2).head(1).item()
     if emaA > emaB:
-        last_decision = 'buy'
+        # This gaurds against buying not on the cross-over.
+        # If you buy after the cross-over, it could be towards the end or anywhere in between,
+        # causing issues with the actual transaction, making it invalid (likely a loss)
+        # Make sure the previous comparison is not the same as the current.
+        if prev_emaA < prev_emaB:
+            last_decision = 'buy'
     elif emaB > emaA:
         last_decision = 'sell'
     return {'emaA':emaA, 'emaB':emaB, 'decision':last_decision, 'close':close}
