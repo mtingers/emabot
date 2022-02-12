@@ -1,3 +1,6 @@
+## [4.1.0] - 2022-02-11
+- Add buy protection to make sure buys are on the cross
+- Add TinyDB to save structured backtest logs
 
 ## [2.1.0] - 2022-02-09
 - Modularize backtest strats

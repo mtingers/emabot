@@ -7,4 +7,6 @@ requests
 wheel
 tabulate
 tqdm
+tinydb-serialization
+tinydb
 TA-Lib
